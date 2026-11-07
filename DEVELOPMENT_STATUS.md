@@ -27,10 +27,11 @@ Every single test ran against real MongoDB Atlas replica set instances without m
 | **Route Handler Integration**| `node test/apiEndpointTest.js` | 5 | 5 | 0 |
 | **Master System Suite** | `node test/fullSystemTest.js` | 21 | 21 | 0 |
 | **Collision Regression Suite**| `node test/collisionRegressionTest.js` | 25 | 25 | 0 |
-| **Knowledge Base Interactivity** | `node test/articleInteractivityTest.js` | 29 | 29 | 0 |
+| **Knowledge Base Interactivity** | `node test/articleInteractivityTest.js` | 51 | 51 | 0 |
+| **Feedback & Vote Persistence** | `node test/feedbackLifecycleTest.js` | 35 | 35 | 0 |
 | **Live Comprehensive Audit** | `node test/comprehensiveAuditTest.js` | 84 | 84 | 0 |
 | **Frontend Production Build** | `npm run build --prefix client` | 2,098 modules | 2,098 | 0 |
-| **Total Automated Tests** | — | **234** | **234** | **0** |
+| **Total Automated Tests** | — | **291** | **291** | **0** |
 
 ---
 
