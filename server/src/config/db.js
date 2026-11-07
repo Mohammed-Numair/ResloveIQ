@@ -4,8 +4,25 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+      maxPoolSize: 20,
+      minPoolSize: 2,
     });
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+
+    // Production connection lifecycle listeners
+    mongoose.connection.on('error', (err) => {
+      console.error(`⚠️ MongoDB Runtime Error: ${err.message}`);
+    });
+
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️ MongoDB disconnected. Mongoose will attempt to reconnect automatically.');
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('✅ MongoDB reconnected successfully.');
+    });
+
     return conn;
   } catch (error) {
     console.error(`❌ MongoDB Connection Error: ${error.message}`);

@@ -10,6 +10,7 @@ import userRoutes from './routes/userRoutes.js';
 import articleRoutes from './routes/articleRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
+import { securityHeaders, authLimiter } from './middleware/securityMiddleware.js';
 import { seedDemoAccounts } from './utils/seedData.js';
 import { seedCategories } from './controllers/categoryController.js';
 import { seedSampleTickets } from './utils/seedTickets.js';
@@ -23,7 +24,8 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Core Middleware
+// Production Security Headers & Core Middleware
+app.use(securityHeaders);
 app.use(cors());
 app.use(express.json());
 
@@ -37,11 +39,23 @@ app.get('/api/health', (req, res) => {
 });
 
 // Application Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/categories', categoryRoutes);
+
+// Production Static Client File Serving
+const clientDist = path.resolve(__dirname, '../../client/dist');
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) {
+      return next();
+    }
+    res.sendFile(path.resolve(clientDist, 'index.html'));
+  });
+}
 
 // Error Handling Middleware
 app.use(notFound);

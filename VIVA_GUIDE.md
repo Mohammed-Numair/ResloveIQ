@@ -162,3 +162,43 @@ On the frontend, navigation links and actions dynamically render based on `user.
 
 ### Q21: How does the Knowledge Base and community feedback system work?
 **Answer:** The self-service Knowledge Base provides searchable troubleshooting guides with real-time category filtering. Articles are stored in the `Article` collection with support for draft isolation (customers only see published articles, while Support Managers and Admins can author and review internal drafts). Community feedback (Helpful / Not Helpful) is tracked via `POST /api/articles/:id/feedback` with an array of user votes per article. This guarantees one vote per authenticated user, eliminates artificial count inflation, allows users to change their vote, and dynamically recalculates persistent `helpfulCount` and `notHelpfulCount` in MongoDB Atlas.
+
+---
+
+## 4. 5-Minute Live Demonstration Script for Evaluators
+
+Follow this exact walkthrough during your viva to demonstrate all major platform capabilities seamlessly:
+
+### Minute 1: Customer Intake & Policy-Driven Deflection
+1. Open `http://localhost:5173/login` and click **"Customer (Alex)"** pill &rarr; logs in instantly.
+2. Click **"Report Issue / New Ticket"** &rarr; Guided Troubleshooter modal opens.
+3. Show **Technical Support** (`ALLOW_DIY`): demonstrates step-by-step self-service troubleshooting steps to deflect tickets.
+4. Show **UPI & Payments** (`RESTRICTED_CALL_REQUIRED`): demonstrates safety policy badge restricting automated external refunds and enforcing human verification.
+
+### Minute 2: Multimodal Intake & Voice IVR Telephony
+1. Submit a ticket with a screenshot attachment (e.g. UPI delay).
+2. Note the generated **`TIK-xxxxx` ID** and **6-Digit Call PIN**.
+3. Click the **"Voice IVR"** button in the top navigation bar &rarr; enters simulated phone modal.
+4. Dial the 6-digit Call PIN &rarr; simulated network handshake &rarr; Web Speech API audibly speaks ticket status, priority, and assigned specialist accompanied by an audio visualizer.
+
+### Minute 3: Support Agent Operations & Collision Awareness
+1. Click **Logout** &rarr; click **"Agent (Sarah)"** pill &rarr; logs in to Agent view.
+2. Filter tickets by **"My Queue Only"** or open the new ticket.
+3. Click **"Claim This Ticket"** &rarr; status auto-advances from `OPEN` to `IN_PROGRESS`.
+4. Demonstrate **AI Triage Card**: shows detected sentiment, SLA target, and click **"Insert Canned Reply"** to populate the contextual reply.
+5. Demonstrate **Private Internal Note**: check *"Private Internal Note (Staff Only)"* and post a whisper note.
+
+### Minute 4: Customer Verification, CSAT & Reopen
+1. Switch back to Customer account.
+2. Open ticket details: **prove that the internal note is physically omitted** (zero wire leakage).
+3. Switch to Agent &rarr; click **Status &rarr; RESOLVED**.
+4. Switch to Customer &rarr; demonstrate **CSAT Rating Widget**: submit a 5-star rating with comment.
+5. Click **"Issue Persists? Click to Reopen Ticket"** &rarr; status resets to `IN_PROGRESS` and `reopenCount` increments.
+
+### Minute 5: Manager Analytics, Knowledge Base & Admin
+1. Log in as **"Manager (Marcus)"**:
+   - Open **"Real Analytics & Metrics"** tab: show real MongoDB aggregation charts (category volume, triaged sentiment, agent workloads) and click **"Export CSV"**.
+   - Open **"Knowledge Base FAQs"**: click any article, demonstrate **Helpful (Yes) / Not Helpful (No)** voting with instant count updates and vote switching.
+2. Log in as **"Admin (Eleanor)"**:
+   - Open **"User Management & Roles"**: show role assignment dropdown and click **"+ Create Staff Account"** to provision a new agent with bcrypt hashing.
+
