@@ -114,7 +114,7 @@ Description: ${description}
 
 Respond ONLY with valid JSON with keys:
 "sentiment" (must be one of: "FRUSTRATED", "URGENT", "NEUTRAL", "POSITIVE"),
-"suggestedCategory" (must be one of: "TECHNICAL", "BILLING", "ACCOUNT", "GENERAL"),
+"suggestedCategory" (must be one of: "TECHNICAL", "PAYMENTS_UPI", "BILLING", "ACCOUNT", "GENERAL"),
 "suggestedPriority" (must be one of: "LOW", "MEDIUM", "HIGH", "URGENT"),
 "summary" (one concise sentence summarizing the core issue),
 "suggestedReply" (a professional, empathetic first response from a support agent).`;

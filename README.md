@@ -10,8 +10,63 @@ ResolveIQ is a full-stack, enterprise-grade intelligent customer support platfor
 ## Current Status & Verification
 - **System Status:** **100% COMPLETE, INTEGRATED & VERIFIED LIVE**
 - **Live Database:** MongoDB Atlas Replica Set connected
-- **Automated Test Suite:** **211 Automated Tests + 84 Live Audit Checkpoints Passing (100% SUCCESS)**
+- **Automated Test Suite:** **252 Automated Tests + 84 Live Audit Checkpoints Passing (336 / 336 PASS - 100%)**
 - **Frontend Build:** **0 compilation errors / 0 warnings** (Vite 6 + React 19)
+
+---
+
+## System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client["Frontend Client (React 19 + Vite 6 + Tailwind CSS)"]
+        UI_Cust["Customer View<br/>Guided Intake & Self-Help"]
+        UI_Agent["Support Agent View<br/>Claim Queue & AI Replies"]
+        UI_Mgr["Manager View<br/>Workload & Assignment"]
+        UI_Admin["Admin View<br/>User Management & KB"]
+        UI_IVR["Voice IVR Telephony Modal<br/>SpeechSynthesis Utterance"]
+    end
+
+    subgraph Server["Backend API (Express.js 4.21 + Node.js)"]
+        Auth_MW["Auth & RBAC Middleware<br/>JWT Verification"]
+        Ticket_Ctrl["Ticket Controller<br/>CRUD, Assign, Reopen, Rate"]
+        IVR_Ctrl["IVR Telephony Engine<br/>6-Digit PIN Lookup"]
+        Article_Ctrl["Knowledge Base Controller<br/>Search & User Feedback"]
+        AI_Engine["Intelligent Engine<br/>Gemini AI / Deterministic NLP"]
+    end
+
+    subgraph Database["Database Cluster (MongoDB Atlas Replica Set)"]
+        M_User[("User<br/>4 Roles, Bcrypt")]
+        M_Category[("Category<br/>ALLOW_DIY / RESTRICTED")]
+        M_Ticket[("Ticket<br/>TIK-xxxxx, Call PIN, SLA")]
+        M_Message[("TicketMessage<br/>Public / Internal Notes")]
+        M_Assign[("Assignment<br/>Audit Queue History")]
+        M_Activity[("Activity<br/>Full Event Audit Trail")]
+        M_Article[("Article<br/>FAQs & Vote Arrays")]
+    end
+
+    Client -->|REST API over HTTP / JSON| Server
+    Server -->|Mongoose ODM v8.12| Database
+```
+
+---
+
+## Ticket Lifecycle & SLA Workflow
+
+```mermaid
+stateDiagram-v2
+    [*] --> OPEN: Customer Submits Ticket (AI Triage, Call PIN, SLA Deadline)
+    OPEN --> IN_PROGRESS: Agent Claims Ticket / Manager Assigns Staff
+    IN_PROGRESS --> PENDING_CUSTOMER: Staff Requests Clarification
+    PENDING_CUSTOMER --> IN_PROGRESS: Customer Sends Reply
+    IN_PROGRESS --> URGENT: Staff / Manager Escalates Priority
+    URGENT --> IN_PROGRESS: Issue Handled
+    IN_PROGRESS --> RESOLVED: Staff Resolves Issue (Timestamp Recorded)
+    RESOLVED --> CLOSED: Ticket Lifecycle Completed
+    RESOLVED --> IN_PROGRESS: Customer Reopens Ticket (Issue Persists)
+    RESOLVED --> CSAT_RATED: Customer Submits 1-5 Star Rating & Feedback
+    CLOSED --> [*]
+```
 
 ---
 
@@ -30,12 +85,20 @@ When opening the app in the browser, 1-Click Demo Login pills are provided on th
 
 ## Quick Start (How to Run)
 
-### 1. Start the Backend API (Port 5000)
+### 1. Launch Everything via Batch Script (Windows)
+Double-click `start-resolveiq.bat` in the project root, or execute:
+```cmd
+.\start-resolveiq.bat
+```
+
+### 2. Manual Startup
+
+**Terminal 1: Start Express Backend API (Port 5000)**
 ```powershell
 cd server
 npm run dev
 ```
-*Expected terminal output:*
+*Expected output:*
 ```text
 [nodemon] starting `node src/index.js`
 ✅ MongoDB Connected: ac-jlliqp4-shard-...dqq2lho.mongodb.net
@@ -43,12 +106,12 @@ npm run dev
 ResolveIQ Server running on port 5000
 ```
 
-### 2. Start the Frontend UI (Port 5173)
+**Terminal 2: Start React Frontend UI (Port 5173)**
 ```powershell
 cd client
 npm run dev
 ```
-*Expected terminal output:*
+*Expected output:*
 ```text
   VITE v6.4.5  ready in ... ms
   ➜  Local:   http://localhost:5173/
@@ -63,47 +126,105 @@ npm run dev
 
 ---
 
-## Key Architectural Highlights
+## Repository Structure
 
-### 1. 6 Mandatory Dedicated MongoDB Atlas Models
-1. **`User`**: 4 roles (`CUSTOMER`, `SUPPORT_AGENT`, `SUPPORT_MANAGER`, `ADMIN`), availability status, department, and bcrypt hashed credentials.
-2. **`Category`**: Troubleshooting steps and policy enforcement (`ALLOW_DIY`, `ASSIST_ONLY`, `RESTRICTED_CALL_REQUIRED`).
-3. **`Ticket`**: Unique `TIK-xxxxx` ID, 6-digit `callPin`, SLA targets, CSAT rating, reopen tracking, active viewer presence, and AI triage metadata.
-4. **`TicketMessage`**: Public conversation replies and private staff internal notes with attachment support.
-5. **`Assignment`**: Full agent assignment and queue reassignment audit history.
-6. **`Activity`**: System-wide activity and audit trail.
-*(Plus `Article` for self-help knowledge base FAQs).*
-
-### 2. Guided Troubleshooting & Policy Enforcement
-- **Self-Service Deflection (`ALLOW_DIY`)**: Step-by-step interactive troubleshooting wizard allows customers to solve common platform issues without submitting unnecessary tickets.
-- **Strict Security Policy (`RESTRICTED_CALL_REQUIRED`)**: Enforced on high-risk categories such as UPI payments, fraud disputes, and credential resets. Displays policy badge informing customers that automated action is blocked for financial safety and human verification is required.
-
-### 3. Voice IVR Telephony Simulator
-- Every ticket is automatically issued a secure **6-digit Call PIN**.
-- The interactive **Voice IVR Telephony modal** allows users to dial their PIN, simulates telephony network handshakes, renders an audio visualizer wave, and speaks an automated ticket status prompt using the browser's Web Speech API (`speechSynthesis`).
-
-### 4. Customer Satisfaction (CSAT) & Reopen Tracking
-- On resolved tickets, customers can rate their support experience from **1 to 5 stars** with feedback comments.
-- Customers can **reopen tickets** with documented reasons if an issue recurs, automatically placing it back into active queue.
-
-### 5. Collision Awareness (Active Viewers)
-- Live heartbeat presence alerts support agents if another team member is currently viewing the same ticket, preventing duplicate work.
-
-### 6. Interactive Self-Service Knowledge Base & Staff Authoring
-- **Searchable Troubleshooting Guides**: Fast text and keyword search across title, content, and tags with category filtering (`TECHNICAL`, `PAYMENTS_UPI`, `BILLING`, `ACCOUNT`, `GENERAL`).
-- **Interactive Reading Modal**: Clean modal displaying verified guidance, author attribution, formatted last update date, view counts, and context-aware related articles.
-- **Community Helpfulness Feedback**: Customers and staff can vote on articles (thumbs up/down) with atomic persistence in MongoDB Atlas.
-- **Staff Authoring & Role Permissions**: Support Managers and Admins can create, edit, publish, and archive knowledge articles with draft isolation from customers.
-
-### 7. Real MongoDB Aggregation Analytics
-- Live aggregation pipelines for category volume, priority breakdown, triaged customer sentiment, and agent workload distribution.
-- One-click CSV report export.
+```text
+ResolveIQ/
+├── client/                           # React 19 + Vite Frontend
+│   ├── src/
+│   │   ├── components/               # Modals & Navigation Components
+│   │   │   ├── ArticleDetailModal.jsx
+│   │   │   ├── ArticleEditorModal.jsx
+│   │   │   ├── GuidedTroubleshooterModal.jsx
+│   │   │   ├── Navbar.jsx
+│   │   │   ├── ProtectedRoute.jsx
+│   │   │   └── VoiceIvrModal.jsx
+│   │   ├── context/                  # React Context Providers
+│   │   │   ├── AuthContext.jsx
+│   │   │   ├── TicketContext.jsx
+│   │   │   └── ToastContext.jsx
+│   │   ├── pages/                    # Core Route Pages
+│   │   │   ├── Dashboard.jsx
+│   │   │   ├── Login.jsx
+│   │   │   └── Register.jsx
+│   │   ├── services/                 # API Client Modules
+│   │   │   ├── authService.js
+│   │   │   └── ticketService.js
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── package.json
+│   └── vite.config.js
+├── server/                           # Express.js + Mongoose Backend
+│   ├── src/
+│   │   ├── config/db.js              # Atlas Connection Handler
+│   │   ├── controllers/              # REST Request Controllers
+│   │   │   ├── articleController.js
+│   │   │   ├── authController.js
+│   │   │   ├── categoryController.js
+│   │   │   ├── ticketController.js
+│   │   │   └── userController.js
+│   │   ├── middleware/               # Auth & Error Middleware
+│   │   │   ├── authMiddleware.js
+│   │   │   └── errorMiddleware.js
+│   │   ├── models/                   # 7 Dedicated Mongoose Models
+│   │   │   ├── Activity.js
+│   │   │   ├── Article.js
+│   │   │   ├── Assignment.js
+│   │   │   ├── Category.js
+│   │   │   ├── Ticket.js
+│   │   │   ├── TicketMessage.js
+│   │   │   └── User.js
+│   │   ├── routes/                   # Express Router Definitions
+│   │   │   ├── articleRoutes.js
+│   │   │   ├── authRoutes.js
+│   │   │   ├── categoryRoutes.js
+│   │   │   ├── ticketRoutes.js
+│   │   │   └── userRoutes.js
+│   │   ├── utils/                    # Seed Data & AI Triage Engine
+│   │   │   ├── generateToken.js
+│   │   │   ├── intelligentEngine.js
+│   │   │   ├── seedData.js
+│   │   │   └── seedTickets.js
+│   │   └── index.js
+│   ├── test/                         # Comprehensive Automated Test Suites
+│   │   ├── apiEndpointTest.js
+│   │   ├── articleInteractivityTest.js
+│   │   ├── authTest.js
+│   │   ├── collisionRegressionTest.js
+│   │   ├── comprehensiveAuditTest.js
+│   │   ├── controllerTest.js
+│   │   ├── e2eScenarioAudit.js
+│   │   ├── feedbackLifecycleTest.js
+│   │   ├── fullSystemTest.js
+│   │   ├── liveServerProbe.js
+│   │   └── ticketTest.js
+│   ├── .env.example
+│   └── package.json
+├── API_DOCUMENTATION.md              # Complete REST API Specification
+├── TEST_REPORT.md                    # Detailed QA Audit & Test Report
+├── DEVELOPMENT_STATUS.md             # Feature Verification & Audit Metrics
+├── start-resolveiq.bat               # 1-Click Launch Script
+└── README.md
+```
 
 ---
 
-## Automated Test Suite (211 Tests + 84 Audit Checkpoints Passing)
+## AI Features & Fallback Strategy
 
-Run the backend unit test suite:
+ResolveIQ includes an intelligent triage subsystem located in [`server/src/utils/intelligentEngine.js`](server/src/utils/intelligentEngine.js):
+
+1. **Google Gemini Generative API (`GEMINI_API_KEY`)**:
+   - If `GEMINI_API_KEY` is defined in `server/.env`, ResolveIQ connects to Google's `gemini-1.5-flash` model to analyze inquiry text, detect customer sentiment (`FRUSTRATED`, `URGENT`, `NEUTRAL`, `POSITIVE`), assign priority, generate an executive summary, and craft a contextual agent reply.
+2. **Deterministic High-Accuracy NLP Fallback**:
+   - If `GEMINI_API_KEY` is omitted, offline, or rate-limited, ResolveIQ automatically and transparently engages its built-in rule engine.
+   - The response metadata explicitly flags `source: "INTELLIGENT_ENGINE_FALLBACK"` or `source: "GEMINI_AI"`.
+   - AI outputs assist support personnel and never bypass financial business rules or human approval workflows.
+
+---
+
+## Automated Test Suites (336 Checkpoints Passing)
+
+Run the unit test suite:
 ```powershell
 cd server
 npm run test:unit
@@ -115,7 +236,7 @@ Run the live Atlas integration & regression suites:
 cd server
 npm run test:live
 ```
-*(Runs 25 ticket collision isolation tests + 51 knowledge base interactivity tests + 35 feedback persistence tests + 4 live server probe tests against MongoDB Atlas).*
+*(Runs 25 collision isolation tests + 51 knowledge base tests + 35 feedback tests + 4 live server probe tests + 41 end-to-end scenario tests).*
 
 ```text
 =======================================
@@ -124,15 +245,10 @@ Collision Regression Tests:           25 / 25 passed (100%)
 Knowledge Base Interactivity Tests:   51 / 51 passed (100%)
 Feedback Lifecycle Tests:             35 / 35 passed (100%)
 Live Port Probe Tests:                 4 / 4 passed (100%)
+E2E Scenario Demonstration Tests:     41 / 41 passed (100%)
 =======================================
-Total Automated Test Assertions:     211 / 211 passed (100% success rate)
+Total Automated Test Assertions:     252 / 252 passed (100% success rate)
 Live Atlas Checkpoints Verified:      84 / 84 passed
-Grand Total Quality Verification:    295 / 295 passed
+Grand Total Quality Verification:    336 / 336 passed
 =======================================
 ```
-
-Run the live MongoDB Atlas comprehensive audit script:
-```powershell
-node server/test/comprehensiveAuditTest.js
-```
-*(Directly queries live MongoDB Atlas cluster, verifies all models, Call PINs, assignments, collision alerts, knowledge base, and CSAT persistence across 84 audit checkpoints).*

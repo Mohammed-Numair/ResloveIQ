@@ -30,9 +30,10 @@ Every single test ran against real MongoDB Atlas replica set instances without m
 | **Knowledge Base Interactivity** | `node test/articleInteractivityTest.js` | 51 | 51 | 0 |
 | **Feedback & Vote Persistence** | `node test/feedbackLifecycleTest.js` | 35 | 35 | 0 |
 | **Live Server Port 5099 Probe** | `node test/liveServerProbe.js` | 4 | 4 | 0 |
+| **E2E Scenario Demonstrations** | `node test/e2eScenarioAudit.js` | 41 | 41 | 0 |
 | **Live Comprehensive Audit** | `node test/comprehensiveAuditTest.js` | 84 | 84 | 0 |
 | **Frontend Production Build** | `npm run build --prefix client` | 2,098 modules | 2,098 | 0 |
-| **Total Automated Tests** | — | **295** | **295** | **0** |
+| **Total Verified Checkpoints** | — | **336** | **336** | **0** |
 
 ---
 

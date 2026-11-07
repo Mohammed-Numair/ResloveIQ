@@ -1599,6 +1599,35 @@ const Dashboard = () => {
                         <p className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
                           {m.message}
                         </p>
+
+                        {/* Message Multimodal Attachments */}
+                        {m.attachments && m.attachments.length > 0 && (
+                          <div className="pt-2 mt-2 border-t border-slate-100 flex flex-wrap gap-2">
+                            {m.attachments.map((att, i) => (
+                              <a
+                                key={i}
+                                href={att.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center space-x-1.5 bg-white border border-slate-200 hover:border-indigo-400 px-2 py-1 rounded-lg text-slate-700 text-[11px] shadow-2xs hover:shadow-xs transition-all"
+                                title="View / Download Attachment"
+                              >
+                                {att.fileType?.startsWith('image') ? (
+                                  <img
+                                    src={att.url}
+                                    alt={att.name || 'attachment'}
+                                    className="w-4 h-4 object-cover rounded"
+                                  />
+                                ) : (
+                                  <FileText className="w-3.5 h-3.5 text-slate-500" />
+                                )}
+                                <span className="max-w-[140px] truncate font-medium">
+                                  {att.name || 'Attachment'}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1640,10 +1669,71 @@ const Dashboard = () => {
                   }`}
                 />
 
-                <div className="flex items-center justify-end">
+                {/* Reply Attachments Previews */}
+                {replyAttachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {replyAttachments.map((att, idx) => (
+                      <div
+                        key={idx}
+                        className="inline-flex items-center space-x-1.5 bg-slate-100 border border-slate-200 px-2 py-1 rounded-lg text-[11px] text-slate-700"
+                      >
+                        {att.fileType?.startsWith('image') ? (
+                          <img src={att.url} alt={att.name} className="w-4 h-4 object-cover rounded" />
+                        ) : (
+                          <FileText className="w-3 h-3 text-slate-500" />
+                        )}
+                        <span className="max-w-[140px] truncate font-medium">{att.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setReplyAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                          className="text-slate-400 hover:text-rose-600 font-bold ml-1 cursor-pointer"
+                          title="Remove attachment"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <label className="inline-flex items-center space-x-1.5 px-3 py-2 text-slate-600 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer border border-slate-200 text-xs font-semibold">
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span>Attach Files / Screenshots</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*,.pdf,.doc,.docx,.txt"
+                      onChange={(e) => {
+                        const files = Array.from(e.target.files);
+                        files.forEach((file) => {
+                          if (file.size > 2 * 1024 * 1024) {
+                            toast.warning(`File "${file.name}" exceeds 2MB limit.`);
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setReplyAttachments((prev) => [
+                              ...prev,
+                              {
+                                name: file.name,
+                                url: event.target.result,
+                                fileType: file.type || 'image/png',
+                                size: file.size,
+                              },
+                            ]);
+                          };
+                          reader.readAsDataURL(file);
+                        });
+                        e.target.value = '';
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+
                   <button
                     type="submit"
-                    disabled={sendingReply || !replyText.trim()}
+                    disabled={sendingReply || (!replyText.trim() && replyAttachments.length === 0)}
                     className={`inline-flex items-center space-x-1.5 px-5 py-2.5 text-white font-bold text-xs rounded-xl shadow-xs transition-colors disabled:opacity-50 cursor-pointer ${
                       isInternalNote
                         ? 'bg-amber-600 hover:bg-amber-700'
