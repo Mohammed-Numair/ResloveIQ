@@ -6,10 +6,10 @@
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "nodemon --watch src --watch .env --delay 1000ms src/index.js",
+    "dev": "nodemon --legacy-watch --watch src --watch .env --delay 500ms src/index.js",
     "test:unit": "node test/authTest.js && node test/controllerTest.js && node test/ticketTest.js && node test/apiEndpointTest.js && node test/fullSystemTest.js",
-    "test:live": "node test/collisionRegressionTest.js && node test/articleInteractivityTest.js && node test/feedbackLifecycleTest.js",
-    "test": "node test/authTest.js && node test/controllerTest.js && node test/ticketTest.js && node test/apiEndpointTest.js && node test/fullSystemTest.js && node test/collisionRegressionTest.js && node test/articleInteractivityTest.js && node test/feedbackLifecycleTest.js"
+    "test:live": "node test/collisionRegressionTest.js && node test/articleInteractivityTest.js && node test/feedbackLifecycleTest.js && node test/liveServerProbe.js",
+    "test": "node test/authTest.js && node test/controllerTest.js && node test/ticketTest.js && node test/apiEndpointTest.js && node test/fullSystemTest.js && node test/collisionRegressionTest.js && node test/articleInteractivityTest.js && node test/feedbackLifecycleTest.js && node test/liveServerProbe.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",

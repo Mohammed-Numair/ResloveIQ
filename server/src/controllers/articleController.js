@@ -143,9 +143,9 @@ export const getArticleById = async (req, res, next) => {
  */
 export const submitArticleFeedback = async (req, res, next) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id || req.body.articleId || req.body.id;
 
-    if (!isValidObjectId(id)) {
+    if (!id || !isValidObjectId(id)) {
       return res.status(400).json({
         success: false,
         message: `Invalid article ID format: '${id}'. Must be a valid 24-character hexadecimal ObjectId.`,

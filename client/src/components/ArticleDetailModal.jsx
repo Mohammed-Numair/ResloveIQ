@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getArticleById, submitArticleFeedback } from '../services/ticketService';
 import { useToast } from '../context/ToastContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function ArticleDetailModal({
   articleId,
@@ -27,6 +28,7 @@ export default function ArticleDetailModal({
   canEdit = false,
 }) {
   const { addToast } = useToast();
+  const { user, token } = useAuth();
   const [article, setArticle] = useState(initialArticle || null);
   const [relatedArticles, setRelatedArticles] = useState([]);
   const [loading, setLoading] = useState(!initialArticle);
@@ -72,7 +74,14 @@ export default function ArticleDetailModal({
   }, [articleId]);
 
   const handleFeedback = async (isHelpful) => {
-    if (submittingVote || !article?._id) return;
+    const targetId = article?._id || articleId;
+    if (submittingVote || !targetId) return;
+
+    if (!token) {
+      addToast('Please log in with your customer or staff account to rate articles.', 'warning');
+      return;
+    }
+
     const voteKey = isHelpful ? 'helpful' : 'not_helpful';
 
     if (userFeedback === voteKey) {
@@ -86,11 +95,11 @@ export default function ArticleDetailModal({
     setSubmittingVote(voteKey);
 
     try {
-      const res = await submitArticleFeedback(article._id, isHelpful);
+      const res = await submitArticleFeedback(targetId, isHelpful);
       setArticle((prev) => ({
         ...prev,
-        helpfulCount: res.helpfulCount ?? prev.helpfulCount,
-        notHelpfulCount: res.notHelpfulCount ?? prev.notHelpfulCount,
+        helpfulCount: res.helpfulCount ?? prev?.helpfulCount,
+        notHelpfulCount: res.notHelpfulCount ?? prev?.notHelpfulCount,
       }));
       setUserFeedback(res.userFeedback || voteKey);
       addToast(res.message || 'Thank you for your feedback!', 'success');

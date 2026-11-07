@@ -295,13 +295,35 @@ export const getArticleById = async (id) => {
  * Submit helpful / not helpful feedback for an article
  */
 export const submitArticleFeedback = async (id, helpful) => {
-  const cleanId = String(id || '').trim();
+  const cleanId = String(id || '').replace(/^\/+|\/+$/g, '').trim();
   if (!cleanId) throw new Error('Article ID is required');
-  const res = await fetch(`${API_BASE}/articles/${encodeURIComponent(cleanId)}/feedback`, {
+
+  const payload = { helpful: Boolean(helpful), articleId: cleanId };
+  const headers = authHeaders();
+
+  let res = await fetch(`${API_BASE}/articles/${encodeURIComponent(cleanId)}/feedback`, {
     method: 'POST',
-    headers: authHeaders(),
-    body: JSON.stringify({ helpful: Boolean(helpful) }),
+    headers,
+    body: JSON.stringify(payload),
   });
+
+  // Resilient fallback if primary route returns 404 (e.g. proxy or route caching)
+  if (res.status === 404) {
+    res = await fetch(`${API_BASE}/articles/feedback/${encodeURIComponent(cleanId)}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+  }
+
+  if (res.status === 404) {
+    res = await fetch(`${API_BASE}/articles/feedback`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+    });
+  }
+
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to submit article feedback');
   return data;
