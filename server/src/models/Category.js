@@ -201,3 +201,4 @@ export const DEFAULT_CATEGORIES = [
 const Category = mongoose.model('Category', categorySchema);
 
 export default Category;
+

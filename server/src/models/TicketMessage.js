@@ -55,3 +55,4 @@ const ticketMessageSchema = new mongoose.Schema(
 const TicketMessage = mongoose.model('TicketMessage', ticketMessageSchema);
 
 export default TicketMessage;
+

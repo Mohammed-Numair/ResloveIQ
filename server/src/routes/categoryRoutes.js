@@ -7,3 +7,4 @@ router.get('/', getCategories);
 router.get('/:slug', getCategoryBySlug);
 
 export default router;
+

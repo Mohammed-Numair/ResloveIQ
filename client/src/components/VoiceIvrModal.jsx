@@ -221,3 +221,4 @@ const VoiceIvrModal = ({ isOpen, onClose, defaultPin = '' }) => {
 };
 
 export default VoiceIvrModal;
+

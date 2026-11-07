@@ -12,6 +12,7 @@ import categoryRoutes from './routes/categoryRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import { seedDemoAccounts } from './utils/seedData.js';
 import { seedCategories } from './controllers/categoryController.js';
+import { seedSampleTickets } from './utils/seedTickets.js';
 import Article, { DEFAULT_ARTICLES } from './models/Article.js';
 
 // Resolve directory path so .env is always loaded reliably
@@ -54,7 +55,7 @@ const startServer = async () => {
     console.warn('⚠️  MONGODB_URI still contains placeholder angle brackets < >. Please remove them in server/.env.');
   } else {
     await connectDB();
-    // Seed default role demo accounts, categories & articles if needed
+    // Seed default role demo accounts, categories, articles & sample tickets if needed
     try {
       await seedDemoAccounts();
       await seedCategories();
@@ -62,6 +63,7 @@ const startServer = async () => {
         const exists = await Article.findOne({ title: art.title });
         if (!exists) await Article.create(art);
       }
+      await seedSampleTickets();
       console.log('✅ Default demo accounts, categories & knowledge base verified.');
     } catch (err) {
       console.warn('⚠️  Auto-seeding skipped:', err.message);
