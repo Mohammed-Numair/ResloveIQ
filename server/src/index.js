@@ -2,7 +2,9 @@ import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
+import mongoose from 'mongoose';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
@@ -64,14 +66,19 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// Basic Health Check Route
-app.get('/api/health', (req, res) => {
+// Health Check Handler (supports both /api/health and /health)
+const handleHealthCheck = (req, res) => {
   res.status(200).json({
     status: 'ok',
     message: 'ResolveIQ Backend API is running',
+    environment: process.env.NODE_ENV || 'development',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
     timestamp: new Date().toISOString(),
   });
-});
+};
+
+app.get('/api/health', handleHealthCheck);
+app.get('/health', handleHealthCheck);
 
 // Application Routes
 app.use('/api/auth', authLimiter, authRoutes);
@@ -80,17 +87,36 @@ app.use('/api/users', userRoutes);
 app.use('/api/articles', articleRoutes);
 app.use('/api/categories', categoryRoutes);
 
-// Production Static Client File Serving
+// Production Static Client File Serving (Only if client bundle actually exists on disk)
 const clientDist = path.resolve(__dirname, '../../client/dist');
-if (process.env.NODE_ENV === 'production') {
+const hasClientBuild = fs.existsSync(path.resolve(clientDist, 'index.html'));
+
+if (process.env.NODE_ENV === 'production' && hasClientBuild) {
   app.use(express.static(clientDist));
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api')) {
+    if (req.path.startsWith('/api') || req.path === '/health') {
       return next();
     }
     res.sendFile(path.resolve(clientDist, 'index.html'));
   });
 }
+
+// API Root Index route when client is deployed separately (e.g. Vercel)
+app.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'ResolveIQ Backend API is running',
+    healthCheck: '/api/health',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      tickets: '/api/tickets',
+      articles: '/api/articles',
+      categories: '/api/categories',
+      users: '/api/users',
+    },
+  });
+});
 
 // Error Handling Middleware
 app.use(notFound);

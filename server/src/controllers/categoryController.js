@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import Category, { DEFAULT_CATEGORIES } from '../models/Category.js';
 
 /**
@@ -23,6 +24,15 @@ export const seedCategories = async () => {
  */
 export const getCategories = async (req, res, next) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.status(200).json({
+        success: true,
+        count: DEFAULT_CATEGORIES.length,
+        categories: DEFAULT_CATEGORIES,
+        source: 'fallback',
+      });
+    }
+
     const categories = await Category.find({ isActive: true }).sort({ name: 1 });
     return res.status(200).json({
       success: true,
@@ -30,6 +40,15 @@ export const getCategories = async (req, res, next) => {
       categories,
     });
   } catch (error) {
+    // If buffering timeout occurred, fallback gracefully to DEFAULT_CATEGORIES
+    if (error.message && error.message.includes('buffering timed out')) {
+      return res.status(200).json({
+        success: true,
+        count: DEFAULT_CATEGORIES.length,
+        categories: DEFAULT_CATEGORIES,
+        source: 'fallback',
+      });
+    }
     next(error);
   }
 };
@@ -59,4 +78,3 @@ export const getCategoryBySlug = async (req, res, next) => {
     next(error);
   }
 };
-

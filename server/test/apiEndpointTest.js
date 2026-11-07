@@ -1,6 +1,6 @@
 import app from '../src/index.js';
 
-console.log('🧪 Starting Express Auth Route Handler Tests (In-Process)...\n');
+console.log('🧪 Starting Express Auth & Production Route Handler Tests (In-Process)...\n');
 
 let passed = 0;
 let total = 0;
@@ -63,23 +63,31 @@ function simulateRequest({ method = 'GET', url = '/', body = {}, headers = {} })
 }
 
 async function runTests() {
-  // 1. Health check
+  // 1. Primary Health check (/api/health)
   const health = await simulateRequest({ method: 'GET', url: '/api/health' });
   assert(health.status === 200 && health.body.status === 'ok', 'GET /api/health returns HTTP 200 and status ok');
 
-  // 2. Protected /api/auth/me without token
+  // 2. Production Health check alias (/health)
+  const healthAlias = await simulateRequest({ method: 'GET', url: '/health' });
+  assert(healthAlias.status === 200 && healthAlias.body.status === 'ok', 'GET /health alias returns HTTP 200 and status ok');
+
+  // 3. API Root endpoint (/)
+  const root = await simulateRequest({ method: 'GET', url: '/' });
+  assert(root.status === 200 && root.body.status === 'ok', 'GET / returns HTTP 200 with online status and endpoint map');
+
+  // 4. Protected /api/auth/me without token
   const me = await simulateRequest({ method: 'GET', url: '/api/auth/me' });
   assert(me.status === 401 && me.body.success === false, 'GET /api/auth/me rejects missing token with HTTP 401');
 
-  // 3. Admin only route without token
+  // 5. Admin only route without token
   const admin = await simulateRequest({ method: 'GET', url: '/api/auth/admin-only' });
   assert(admin.status === 401 && admin.body.success === false, 'GET /api/auth/admin-only rejects missing token with HTTP 401');
 
-  // 4. Staff only route without token
+  // 6. Staff only route without token
   const staff = await simulateRequest({ method: 'GET', url: '/api/auth/staff-only' });
   assert(staff.status === 401 && staff.body.success === false, 'GET /api/auth/staff-only rejects missing token with HTTP 401');
 
-  // 5. 404 Route handler
+  // 7. 404 Route handler
   const notFound = await simulateRequest({ method: 'GET', url: '/api/unknown-endpoint' });
   assert(notFound.status === 404, 'Unknown endpoint returns HTTP 404');
 
