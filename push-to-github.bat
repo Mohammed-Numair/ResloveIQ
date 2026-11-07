@@ -1,7 +1,7 @@
 @echo off
 title Push ResolveIQ to Private GitHub Repository
 echo =========================================================
-echo   Pushing ResolveIQ to GitHub (Mohammed-Numair/ResolveIQ)
+echo   Pushing ResolveIQ to GitHub (Mohammed-Numair/ResloveIQ)
 echo =========================================================
 echo.
 git push -u origin main
@@ -9,7 +9,7 @@ echo.
 if %ERRORLEVEL% EQU 0 (
   echo =========================================================
   echo   SUCCESS: Project successfully uploaded to GitHub!
-  echo   Repository: https://github.com/Mohammed-Numair/ResolveIQ
+  echo   Repository: https://github.com/Mohammed-Numair/ResloveIQ
   echo =========================================================
 ) else (
   echo =========================================================
