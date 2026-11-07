@@ -96,10 +96,21 @@ export const getArticleById = async (req, res, next) => {
     const isStaff = req.user && STAFF_ROLES.includes(req.user.role);
     const isPublished = !article.status || article.status === 'PUBLISHED';
     if (!isPublished && !isStaff) {
-      return res.status(404).json({
+      return res.status(403).json({
         success: false,
-        message: `Knowledge article with ID '${id}' was not found.`,
+        message: `This article is not publicly available.`,
       });
+    }
+
+    // Check if authenticated user has existing feedback record on this article
+    let userFeedback = null;
+    if (req.user && Array.isArray(article.feedback)) {
+      const userVote = article.feedback.find(
+        (f) => f.user && f.user.toString() === req.user._id.toString()
+      );
+      if (userVote) {
+        userFeedback = userVote.helpful ? 'helpful' : 'not_helpful';
+      }
     }
 
     // Find related articles within the same category
@@ -118,6 +129,7 @@ export const getArticleById = async (req, res, next) => {
     return res.status(200).json({
       success: true,
       article,
+      userFeedback,
       relatedArticles,
     });
   } catch (error) {
@@ -127,6 +139,7 @@ export const getArticleById = async (req, res, next) => {
 
 /**
  * Submit helpful / not helpful feedback for an article
+ * Authenticated per user: prevents count inflation and allows vote changes
  */
 export const submitArticleFeedback = async (req, res, next) => {
   try {
@@ -139,18 +152,33 @@ export const submitArticleFeedback = async (req, res, next) => {
       });
     }
 
-    const { isHelpful } = req.body;
-    const incField =
-      isHelpful === true || isHelpful === 'true' || isHelpful === 'helpful'
-        ? { helpfulCount: 1 }
-        : { notHelpfulCount: 1 };
+    // Accept either { helpful: boolean } or legacy { isHelpful: boolean }
+    const rawHelpful =
+      req.body.helpful !== undefined ? req.body.helpful : req.body.isHelpful;
 
-    const article = await Article.findByIdAndUpdate(
-      id,
-      { $inc: incField },
-      { new: true }
-    );
+    if (
+      typeof rawHelpful !== 'boolean' &&
+      rawHelpful !== 'true' &&
+      rawHelpful !== 'false'
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Request body must contain 'helpful': boolean (true for helpful, false for not helpful).",
+      });
+    }
 
+    const isHelpful = rawHelpful === true || rawHelpful === 'true';
+
+    // Must be authenticated
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required to submit feedback.',
+      });
+    }
+
+    const article = await Article.findById(id);
     if (!article) {
       return res.status(404).json({
         success: false,
@@ -158,11 +186,60 @@ export const submitArticleFeedback = async (req, res, next) => {
       });
     }
 
+    // Check user accessibility: non-staff cannot submit feedback on unpublished drafts
+    const isStaff = req.user && STAFF_ROLES.includes(req.user.role);
+    const isPublished = !article.status || article.status === 'PUBLISHED';
+    if (!isPublished && !isStaff) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You do not have permission to rate unpublished articles.',
+      });
+    }
+
+    if (!Array.isArray(article.feedback)) {
+      article.feedback = [];
+    }
+
+    // Check for existing feedback record by this user
+    const existingIndex = article.feedback.findIndex(
+      (f) => f.user && f.user.toString() === req.user._id.toString()
+    );
+
+    let voteAction = 'new';
+    if (existingIndex > -1) {
+      if (article.feedback[existingIndex].helpful === isHelpful) {
+        voteAction = 'unchanged';
+      } else {
+        voteAction = 'updated';
+        article.feedback[existingIndex].helpful = isHelpful;
+        article.feedback[existingIndex].createdAt = new Date();
+      }
+    } else {
+      article.feedback.push({
+        user: req.user._id,
+        helpful: isHelpful,
+        createdAt: new Date(),
+      });
+    }
+
+    // Recalculate persistent counts
+    article.helpfulCount = article.feedback.filter((f) => f.helpful === true).length;
+    article.notHelpfulCount = article.feedback.filter((f) => f.helpful === false).length;
+
+    await article.save();
+
     return res.status(200).json({
       success: true,
       helpfulCount: article.helpfulCount,
       notHelpfulCount: article.notHelpfulCount,
-      message: 'Thank you for your feedback!',
+      userFeedback: isHelpful ? 'helpful' : 'not_helpful',
+      action: voteAction,
+      message:
+        voteAction === 'unchanged'
+          ? 'Your feedback was already recorded.'
+          : voteAction === 'updated'
+          ? 'Your feedback has been updated.'
+          : 'Thank you for rating this article!',
     });
   } catch (error) {
     next(error);

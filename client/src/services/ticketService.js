@@ -294,13 +294,13 @@ export const getArticleById = async (id) => {
 /**
  * Submit helpful / not helpful feedback for an article
  */
-export const submitArticleFeedback = async (id, isHelpful) => {
+export const submitArticleFeedback = async (id, helpful) => {
   const cleanId = String(id || '').trim();
   if (!cleanId) throw new Error('Article ID is required');
   const res = await fetch(`${API_BASE}/articles/${encodeURIComponent(cleanId)}/feedback`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ isHelpful }),
+    body: JSON.stringify({ helpful: Boolean(helpful) }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to submit article feedback');

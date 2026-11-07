@@ -42,6 +42,23 @@ const articleSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    feedback: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        helpful: {
+          type: Boolean,
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   {
     timestamps: true,
@@ -49,6 +66,7 @@ const articleSchema = new mongoose.Schema(
 );
 
 articleSchema.index({ category: 1, status: 1 });
+articleSchema.index({ 'feedback.user': 1 });
 articleSchema.index({ title: 'text', content: 'text', keywords: 'text' });
 
 export const DEFAULT_ARTICLES = [

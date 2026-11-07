@@ -22,7 +22,7 @@ router.get('/', optionalProtect, getArticles);
 
 // Single article detail and feedback
 router.get('/:id', optionalProtect, getArticleById);
-router.post('/:id/feedback', submitArticleFeedback);
+router.post('/:id/feedback', protect, submitArticleFeedback);
 
 // Manager and Admin article authoring & management
 router.post('/', protect, authorize('SUPPORT_MANAGER', 'ADMIN'), createArticle);

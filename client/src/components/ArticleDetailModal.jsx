@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertCircle,
   RefreshCw,
+  Loader2,
 } from 'lucide-react';
 import { getArticleById, submitArticleFeedback } from '../services/ticketService';
 import { useToast } from '../context/ToastContext';
@@ -30,8 +31,8 @@ export default function ArticleDetailModal({
   const [relatedArticles, setRelatedArticles] = useState([]);
   const [loading, setLoading] = useState(!initialArticle);
   const [error, setError] = useState(null);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [userFeedback, setUserFeedback] = useState(null); // 'helpful' | 'not_helpful' | null
+  const [submittingVote, setSubmittingVote] = useState(null); // 'helpful' | 'not_helpful' | null
 
   const fetchArticle = useCallback(async () => {
     if (!articleId) return;
@@ -46,6 +47,9 @@ export default function ArticleDetailModal({
       if (data?.article) {
         setArticle(data.article);
         setRelatedArticles(data.relatedArticles || []);
+        if (data.userFeedback !== undefined) {
+          setUserFeedback(data.userFeedback);
+        }
       }
     } catch (err) {
       setError(err.message || 'Failed to load article details');
@@ -58,7 +62,7 @@ export default function ArticleDetailModal({
   }, [articleId, article, addToast]);
 
   useEffect(() => {
-    setFeedbackSubmitted(false);
+    setUserFeedback(null);
     if (initialArticle && initialArticle._id === articleId) {
       setArticle(initialArticle);
     } else {
@@ -68,22 +72,32 @@ export default function ArticleDetailModal({
   }, [articleId]);
 
   const handleFeedback = async (isHelpful) => {
-    if (feedbackSubmitted || submittingFeedback || !article?._id) return;
-    setSubmittingFeedback(true);
+    if (submittingVote || !article?._id) return;
+    const voteKey = isHelpful ? 'helpful' : 'not_helpful';
+
+    if (userFeedback === voteKey) {
+      addToast(
+        `You have already rated this article as ${isHelpful ? 'Helpful' : 'Not Helpful'}.`,
+        'info'
+      );
+      return;
+    }
+
+    setSubmittingVote(voteKey);
 
     try {
       const res = await submitArticleFeedback(article._id, isHelpful);
       setArticle((prev) => ({
         ...prev,
-        helpfulCount: res.helpfulCount ?? (isHelpful ? (prev.helpfulCount || 0) + 1 : prev.helpfulCount),
-        notHelpfulCount: res.notHelpfulCount ?? (!isHelpful ? (prev.notHelpfulCount || 0) + 1 : prev.notHelpfulCount),
+        helpfulCount: res.helpfulCount ?? prev.helpfulCount,
+        notHelpfulCount: res.notHelpfulCount ?? prev.notHelpfulCount,
       }));
-      setFeedbackSubmitted(true);
-      addToast('Thank you for rating this article!', 'success');
+      setUserFeedback(res.userFeedback || voteKey);
+      addToast(res.message || 'Thank you for your feedback!', 'success');
     } catch (err) {
-      addToast(err.message || 'Failed to record feedback', 'error');
+      addToast(err.message || 'Failed to submit article feedback', 'error');
     } finally {
-      setSubmittingFeedback(false);
+      setSubmittingVote(null);
     }
   };
 
@@ -235,40 +249,81 @@ export default function ArticleDetailModal({
 
               {/* Helpful / Not Helpful Feedback Widget */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div>
+                <div className="space-y-0.5">
                   <h4 className="text-xs font-bold text-slate-900">Was this article helpful?</h4>
                   <p className="text-[11px] text-slate-500">
                     Your feedback helps us continuously improve ResolveIQ self-service troubleshooting.
                   </p>
+                  {userFeedback && (
+                    <div className="flex items-center space-x-1 text-[11px] font-semibold pt-1">
+                      <CheckCircle2
+                        className={`w-3.5 h-3.5 ${
+                          userFeedback === 'helpful' ? 'text-emerald-600' : 'text-rose-500'
+                        }`}
+                      />
+                      <span
+                        className={
+                          userFeedback === 'helpful' ? 'text-emerald-700' : 'text-rose-700'
+                        }
+                      >
+                        {userFeedback === 'helpful'
+                          ? 'You rated this article as Helpful (Yes).'
+                          : 'You rated this article as Not Helpful (No).'}
+                      </span>
+                      <span className="text-slate-400 font-normal">
+                        Click the other button to change vote.
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                {feedbackSubmitted ? (
-                  <div className="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-200">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Feedback Recorded!</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center space-x-2">
-                    <button
-                      type="button"
-                      disabled={submittingFeedback}
-                      onClick={() => handleFeedback(true)}
-                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700 text-xs font-medium text-slate-700 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Yes ({article.helpfulCount || 0})</span>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={submittingFeedback}
-                      onClick={() => handleFeedback(false)}
-                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:border-rose-500 hover:bg-rose-50 hover:text-rose-700 text-xs font-medium text-slate-700 rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      <ThumbsDown className="w-3.5 h-3.5 text-rose-500" />
-                      <span>No ({article.notHelpfulCount || 0})</span>
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center space-x-2 shrink-0">
+                  {/* YES / HELPFUL BUTTON */}
+                  <button
+                    type="button"
+                    disabled={Boolean(submittingVote)}
+                    onClick={() => handleFeedback(true)}
+                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50 ${
+                      userFeedback === 'helpful'
+                        ? 'bg-emerald-600 text-white border border-emerald-600 ring-2 ring-emerald-200 shadow-sm'
+                        : 'bg-white border border-slate-300 text-slate-700 hover:border-emerald-500 hover:bg-emerald-50 hover:text-emerald-700'
+                    }`}
+                  >
+                    {submittingVote === 'helpful' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ThumbsUp
+                        className={`w-3.5 h-3.5 ${
+                          userFeedback === 'helpful' ? 'text-white' : 'text-emerald-600'
+                        }`}
+                      />
+                    )}
+                    <span>Yes ({article.helpfulCount || 0})</span>
+                  </button>
+
+                  {/* NO / NOT HELPFUL BUTTON */}
+                  <button
+                    type="button"
+                    disabled={Boolean(submittingVote)}
+                    onClick={() => handleFeedback(false)}
+                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50 ${
+                      userFeedback === 'not_helpful'
+                        ? 'bg-rose-600 text-white border border-rose-600 ring-2 ring-rose-200 shadow-sm'
+                        : 'bg-white border border-slate-300 text-slate-700 hover:border-rose-500 hover:bg-rose-50 hover:text-rose-700'
+                    }`}
+                  >
+                    {submittingVote === 'not_helpful' ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ThumbsDown
+                        className={`w-3.5 h-3.5 ${
+                          userFeedback === 'not_helpful' ? 'text-white' : 'text-rose-500'
+                        }`}
+                      />
+                    )}
+                    <span>No ({article.notHelpfulCount || 0})</span>
+                  </button>
+                </div>
               </div>
 
               {/* Related Articles Section */}
