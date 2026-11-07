@@ -256,13 +256,91 @@ export const updateUserRole = async (userId, role) => {
 };
 
 /**
- * Fetch Knowledge Base Articles
+ * Fetch Knowledge Base Articles with search, category and status filters
  */
-export const getArticles = async (category = '') => {
-  const url = category ? `${API_BASE}/articles?category=${category}` : `${API_BASE}/articles`;
-  const res = await fetch(url);
+export const getArticles = async (filters = {}) => {
+  const params = new URLSearchParams();
+  if (typeof filters === 'string') {
+    if (filters && filters !== 'ALL') params.append('category', filters);
+  } else if (filters && typeof filters === 'object') {
+    if (filters.category && filters.category !== 'ALL') params.append('category', filters.category);
+    if (filters.search) params.append('search', filters.search);
+    if (filters.status && filters.status !== 'ALL') params.append('status', filters.status);
+  }
+
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const res = await fetch(`${API_BASE}/articles${queryString}`, {
+    headers: authHeaders(),
+  });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to fetch knowledge base');
+  return data;
+};
+
+/**
+ * Fetch a single Knowledge Base Article by ID (increments view count, fetches related articles)
+ */
+export const getArticleById = async (id) => {
+  const res = await fetch(`${API_BASE}/articles/${id}`, {
+    headers: authHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch article details');
+  return data;
+};
+
+/**
+ * Submit helpful / not helpful feedback for an article
+ */
+export const submitArticleFeedback = async (id, isHelpful) => {
+  const res = await fetch(`${API_BASE}/articles/${id}/feedback`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ isHelpful }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to submit article feedback');
+  return data;
+};
+
+/**
+ * Create a new Knowledge Base Article (Support Manager & Admin)
+ */
+export const createArticle = async (articleData) => {
+  const res = await fetch(`${API_BASE}/articles`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(articleData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to create article');
+  return data;
+};
+
+/**
+ * Update an existing Knowledge Base Article (Support Manager & Admin)
+ */
+export const updateArticle = async (id, articleData) => {
+  const res = await fetch(`${API_BASE}/articles/${id}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify(articleData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update article');
+  return data;
+};
+
+/**
+ * Delete a Knowledge Base Article (Support Manager & Admin)
+ */
+export const deleteArticle = async (id) => {
+  const res = await fetch(`${API_BASE}/articles/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to delete article');
   return data;
 };
 

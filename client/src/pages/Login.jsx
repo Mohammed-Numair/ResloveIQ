@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, Eye, EyeOff, Loader2, AlertCircle, ArrowRight, Sparkles, User, Shield, Headset, UserCheck } from 'lucide-react';
 
 const DEMO_PRESETS = [
-  { label: 'Customer', name: 'Alex Rivera', email: 'customer@resolveiq.test', pass: 'Customer@12345', icon: <User className="w-3 h-3 text-slate-500" /> },
+  { label: 'Customer (Alex)', name: 'Alex Rivera', email: 'customer@resolveiq.test', pass: 'Customer@12345', icon: <User className="w-3 h-3 text-slate-500" /> },
+  { label: 'Customer (John)', name: 'John Customer', email: 'john@example.com', pass: 'Password@123', icon: <User className="w-3 h-3 text-emerald-600" /> },
   { label: 'Agent', name: 'Sarah Connor', email: 'agent@resolveiq.test', pass: 'Agent@12345', icon: <Headset className="w-3 h-3 text-teal-600" /> },
   { label: 'Manager', name: 'Marcus Chen', email: 'manager@resolveiq.test', pass: 'Manager@12345', icon: <UserCheck className="w-3 h-3 text-blue-600" /> },
   { label: 'Admin', name: 'Eleanor Vance', email: 'admin@resolveiq.test', pass: 'Admin@12345', icon: <Shield className="w-3 h-3 text-purple-600" /> },
@@ -89,7 +90,7 @@ const Login = () => {
             <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             <span>1-Click Demo Logins for Evaluation:</span>
           </div>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
             {DEMO_PRESETS.map((p) => (
               <button
                 key={p.label}

@@ -4,6 +4,8 @@ import { useToast } from '../context/ToastContext';
 import { getRoleBadge } from '../components/Navbar';
 import GuidedTroubleshooterModal from '../components/GuidedTroubleshooterModal';
 import VoiceIvrModal from '../components/VoiceIvrModal';
+import ArticleDetailModal from '../components/ArticleDetailModal';
+import ArticleEditorModal from '../components/ArticleEditorModal';
 import {
   getTickets,
   getTicketById,
@@ -50,6 +52,9 @@ import {
   Zap,
   Paperclip,
   CheckCircle,
+  ThumbsUp,
+  ThumbsDown,
+  Edit,
 } from 'lucide-react';
 
 const PRIORITY_COLORS = {
@@ -130,6 +135,15 @@ const Dashboard = () => {
   const [usersList, setUsersList] = useState([]);
   const [articlesList, setArticlesList] = useState([]);
 
+  // Knowledge Base State
+  const [selectedArticleId, setSelectedArticleId] = useState(null);
+  const [editingArticle, setEditingArticle] = useState(null);
+  const [showCreateArticleModal, setShowCreateArticleModal] = useState(false);
+  const [articleCategory, setArticleCategory] = useState('ALL');
+  const [articleSearch, setArticleSearch] = useState('');
+  const [articleStatus, setArticleStatus] = useState('ALL');
+  const [loadingArticles, setLoadingArticles] = useState(false);
+
   // Create Staff Modal State
   const [showStaffModal, setShowStaffModal] = useState(false);
   const [newStaff, setNewStaff] = useState({
@@ -162,6 +176,24 @@ const Dashboard = () => {
     fetchTicketsData();
   }, [statusFilter, priorityFilter, categoryFilter, searchTerm, myQueueOnly]);
 
+  // Fetch knowledge base articles with active filters
+  const loadArticles = async (overrideFilters = {}) => {
+    setLoadingArticles(true);
+    try {
+      const activeFilters = {
+        category: overrideFilters.category !== undefined ? overrideFilters.category : articleCategory,
+        search: overrideFilters.search !== undefined ? overrideFilters.search : articleSearch,
+        status: overrideFilters.status !== undefined ? overrideFilters.status : articleStatus,
+      };
+      const data = await getArticles(activeFilters);
+      setArticlesList(data.articles || []);
+    } catch (err) {
+      // Keep existing list on transient network error
+    } finally {
+      setLoadingArticles(false);
+    }
+  };
+
   // Load secondary data on tab switch
   useEffect(() => {
     if (isStaff) {
@@ -174,7 +206,7 @@ const Dashboard = () => {
       getAllUsers().then((d) => setUsersList(d.users || [])).catch(() => {});
     }
     if (activeTab === 'knowledge') {
-      getArticles().then((d) => setArticlesList(d.articles || [])).catch(() => {});
+      loadArticles();
     }
   }, [activeTab]);
 
@@ -954,42 +986,224 @@ const Dashboard = () => {
       {/* TAB 4: KNOWLEDGE BASE FAQS */}
       {activeTab === 'knowledge' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900">Self-Service Knowledge Base</h2>
               <p className="text-xs text-slate-500">
                 Verified helpdesk articles and troubleshooting guides for self-service problem resolution.
               </p>
             </div>
+            {(isManager || isAdmin) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingArticle(null);
+                  setShowCreateArticleModal(true);
+                }}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Knowledge Article</span>
+              </button>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {articlesList.map((art) => (
-              <div
-                key={art._id}
-                className="p-5 bg-white rounded-3xl border border-slate-200/90 shadow-xs space-y-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
-                    {art.category}
-                  </span>
-                  <span className="text-[11px] text-slate-400">Knowledge Article</span>
-                </div>
-                <h3 className="text-sm font-bold text-slate-900">{art.title}</h3>
-                <p className="text-xs text-slate-600 leading-relaxed">{art.content}</p>
-                <div className="pt-2 flex flex-wrap gap-1.5">
-                  {art.keywords?.map((k) => (
-                    <span
-                      key={k}
-                      className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-500 rounded-md font-mono"
-                    >
-                      #{k}
-                    </span>
-                  ))}
-                </div>
+          {/* Search & Category Filter Toolbar */}
+          <div className="p-4 bg-white rounded-3xl border border-slate-200/90 shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3.5 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  value={articleSearch}
+                  onChange={(e) => setArticleSearch(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      loadArticles({ search: articleSearch });
+                    }
+                  }}
+                  placeholder="Search articles by title, keywords or troubleshooting topic..."
+                  className="w-full pl-10 pr-9 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs text-slate-800"
+                />
+                {articleSearch && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setArticleSearch('');
+                      loadArticles({ search: '' });
+                    }}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
-            ))}
+
+              <button
+                type="button"
+                onClick={() => loadArticles({ search: articleSearch })}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shrink-0 inline-flex items-center justify-center space-x-1"
+              >
+                <Search className="w-3.5 h-3.5 mr-1" />
+                <span>Search</span>
+              </button>
+
+              {(isManager || isAdmin) && (
+                <select
+                  value={articleStatus}
+                  onChange={(e) => {
+                    setArticleStatus(e.target.value);
+                    loadArticles({ status: e.target.value });
+                  }}
+                  className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="PUBLISHED">Published Only</option>
+                  <option value="DRAFT">Drafts Only</option>
+                  <option value="ARCHIVED">Archived Only</option>
+                </select>
+              )}
+            </div>
+
+            {/* Category Filter Pills */}
+            <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 pt-1 border-t border-slate-100">
+              {[
+                { key: 'ALL', label: 'All Categories' },
+                { key: 'TECHNICAL', label: 'Technical' },
+                { key: 'PAYMENTS_UPI', label: 'Payments & UPI' },
+                { key: 'BILLING', label: 'Billing' },
+                { key: 'ACCOUNT', label: 'Account' },
+                { key: 'GENERAL', label: 'General' },
+              ].map((cat) => (
+                <button
+                  key={cat.key}
+                  type="button"
+                  onClick={() => {
+                    setArticleCategory(cat.key);
+                    loadArticles({ category: cat.key });
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                    articleCategory === cat.key
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Articles Grid / Loading / Empty State */}
+          {loadingArticles ? (
+            <div className="flex flex-col items-center justify-center py-16 bg-white rounded-3xl border border-slate-200/90 shadow-xs space-y-3">
+              <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs text-slate-500 font-medium">Loading knowledge base articles...</p>
+            </div>
+          ) : articlesList.length === 0 ? (
+            <div className="p-8 text-center bg-white rounded-3xl border border-slate-200/90 shadow-xs space-y-3">
+              <div className="w-12 h-12 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">No Knowledge Articles Found</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                No articles matched your search or category filter. Try clearing your search query or switching categories.
+              </p>
+              {(articleSearch || articleCategory !== 'ALL' || articleStatus !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArticleSearch('');
+                    setArticleCategory('ALL');
+                    setArticleStatus('ALL');
+                    loadArticles({ search: '', category: 'ALL', status: 'ALL' });
+                  }}
+                  className="px-4 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-xl border border-indigo-200 transition-colors cursor-pointer"
+                >
+                  Reset All Filters
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {articlesList.map((art) => (
+                <div
+                  key={art._id}
+                  onClick={() => setSelectedArticleId(art._id)}
+                  className="p-5 bg-white rounded-3xl border border-slate-200/90 hover:border-indigo-400 hover:shadow-lg transition-all duration-200 cursor-pointer group flex flex-col justify-between space-y-3"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">
+                        {art.category}
+                      </span>
+                      <div className="flex items-center space-x-1.5">
+                        {art.status && art.status !== 'PUBLISHED' && (
+                          <span
+                            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                              art.status === 'DRAFT'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}
+                          >
+                            {art.status}
+                          </span>
+                        )}
+                        {(isManager || isAdmin) && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingArticle(art);
+                            }}
+                            className="p-1 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-indigo-600 transition-colors"
+                            title="Edit Article"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-indigo-600 transition-colors">
+                      {art.title}
+                    </h3>
+                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-3 mt-1.5">
+                      {art.content}
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <div className="flex flex-wrap gap-1">
+                      {art.keywords?.slice(0, 3).map((k) => (
+                        <span
+                          key={k}
+                          className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded font-mono"
+                        >
+                          #{k}
+                        </span>
+                      ))}
+                      {art.keywords?.length > 3 && (
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          +{art.keywords.length - 3}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-3 text-[11px] text-slate-400 shrink-0">
+                      <span className="flex items-center space-x-1" title="View count">
+                        <Eye className="w-3 h-3 text-slate-400" />
+                        <span>{art.viewCount || 0}</span>
+                      </span>
+                      <span className="flex items-center space-x-1 text-emerald-600 font-medium" title="Helpful ratings">
+                        <ThumbsUp className="w-3 h-3 text-emerald-500" />
+                        <span>{art.helpfulCount || 0}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1554,6 +1768,33 @@ const Dashboard = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* MODAL 5: KNOWLEDGE ARTICLE DETAIL MODAL */}
+      {selectedArticleId && (
+        <ArticleDetailModal
+          articleId={selectedArticleId}
+          onClose={() => setSelectedArticleId(null)}
+          onSelectArticle={(id) => setSelectedArticleId(id)}
+          onEditArticle={(art) => {
+            setSelectedArticleId(null);
+            setEditingArticle(art);
+          }}
+          canEdit={isManager || isAdmin}
+        />
+      )}
+
+      {/* MODAL 6: KNOWLEDGE ARTICLE CREATE / EDIT MODAL (STAFF) */}
+      {(showCreateArticleModal || editingArticle) && (
+        <ArticleEditorModal
+          isOpen={showCreateArticleModal || Boolean(editingArticle)}
+          initialArticle={editingArticle}
+          onClose={() => {
+            setShowCreateArticleModal(false);
+            setEditingArticle(null);
+          }}
+          onSaved={() => loadArticles()}
+        />
       )}
     </div>
   );

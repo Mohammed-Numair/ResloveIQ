@@ -154,7 +154,7 @@ Respond ONLY with valid JSON with keys:
 export const findSuggestedArticles = async (queryText) => {
   try {
     const q = queryText.toLowerCase();
-    const allArticles = await Article.find({});
+    const allArticles = await Article.find({ status: { $ne: 'DRAFT' } });
     const matched = allArticles.filter((art) => {
       const matchInTitle = art.title.toLowerCase().includes(q);
       const matchInKeywords = art.keywords.some((k) => q.includes(k.toLowerCase()));
