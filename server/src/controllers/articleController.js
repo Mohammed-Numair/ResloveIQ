@@ -1,7 +1,10 @@
+import mongoose from 'mongoose';
 import Article, { DEFAULT_ARTICLES } from '../models/Article.js';
 import { findSuggestedArticles } from '../utils/intelligentEngine.js';
 
 const STAFF_ROLES = ['SUPPORT_MANAGER', 'ADMIN', 'SUPPORT_AGENT'];
+
+const isValidObjectId = (id) => mongoose.Types.ObjectId.isValid(id);
 
 /**
  * Fetch knowledge articles with search, category and status filtering
@@ -67,12 +70,25 @@ export const getArticles = async (req, res, next) => {
 export const getArticleById = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const article = await Article.findById(id);
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid article ID format: '${id}'. Must be a valid 24-character hexadecimal ObjectId.`,
+      });
+    }
+
+    // Atomically increment viewCount and retrieve document
+    const article = await Article.findByIdAndUpdate(
+      id,
+      { $inc: { viewCount: 1 } },
+      { new: true }
+    );
 
     if (!article) {
       return res.status(404).json({
         success: false,
-        message: 'Knowledge article not found.',
+        message: `Knowledge article with ID '${id}' was not found.`,
       });
     }
 
@@ -80,15 +96,11 @@ export const getArticleById = async (req, res, next) => {
     const isStaff = req.user && STAFF_ROLES.includes(req.user.role);
     const isPublished = !article.status || article.status === 'PUBLISHED';
     if (!isPublished && !isStaff) {
-      return res.status(403).json({
+      return res.status(404).json({
         success: false,
-        message: 'This article is not publicly available.',
+        message: `Knowledge article with ID '${id}' was not found.`,
       });
     }
-
-    // Increment viewCount atomically
-    article.viewCount = (article.viewCount || 0) + 1;
-    await article.save();
 
     // Find related articles within the same category
     const relatedArticles = await Article.find({
@@ -119,8 +131,15 @@ export const getArticleById = async (req, res, next) => {
 export const submitArticleFeedback = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { isHelpful } = req.body;
 
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid article ID format: '${id}'. Must be a valid 24-character hexadecimal ObjectId.`,
+      });
+    }
+
+    const { isHelpful } = req.body;
     const incField =
       isHelpful === true || isHelpful === 'true' || isHelpful === 'helpful'
         ? { helpfulCount: 1 }
@@ -135,7 +154,7 @@ export const submitArticleFeedback = async (req, res, next) => {
     if (!article) {
       return res.status(404).json({
         success: false,
-        message: 'Knowledge article not found.',
+        message: `Knowledge article with ID '${id}' was not found.`,
       });
     }
 
@@ -200,13 +219,21 @@ export const createArticle = async (req, res, next) => {
 export const updateArticle = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid article ID format: '${id}'. Must be a valid 24-character hexadecimal ObjectId.`,
+      });
+    }
+
     const { title, category, content, keywords, status } = req.body;
 
     const article = await Article.findById(id);
     if (!article) {
       return res.status(404).json({
         success: false,
-        message: 'Knowledge article not found.',
+        message: `Knowledge article with ID '${id}' was not found.`,
       });
     }
 
@@ -241,12 +268,20 @@ export const updateArticle = async (req, res, next) => {
 export const deleteArticle = async (req, res, next) => {
   try {
     const { id } = req.params;
+
+    if (!isValidObjectId(id)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid article ID format: '${id}'. Must be a valid 24-character hexadecimal ObjectId.`,
+      });
+    }
+
     const article = await Article.findByIdAndDelete(id);
 
     if (!article) {
       return res.status(404).json({
         success: false,
-        message: 'Knowledge article not found.',
+        message: `Knowledge article with ID '${id}' was not found.`,
       });
     }
 

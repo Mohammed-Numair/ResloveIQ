@@ -281,7 +281,9 @@ export const getArticles = async (filters = {}) => {
  * Fetch a single Knowledge Base Article by ID (increments view count, fetches related articles)
  */
 export const getArticleById = async (id) => {
-  const res = await fetch(`${API_BASE}/articles/${id}`, {
+  const cleanId = String(id || '').trim();
+  if (!cleanId) throw new Error('Article ID is required');
+  const res = await fetch(`${API_BASE}/articles/${encodeURIComponent(cleanId)}`, {
     headers: authHeaders(),
   });
   const data = await res.json();
@@ -293,7 +295,9 @@ export const getArticleById = async (id) => {
  * Submit helpful / not helpful feedback for an article
  */
 export const submitArticleFeedback = async (id, isHelpful) => {
-  const res = await fetch(`${API_BASE}/articles/${id}/feedback`, {
+  const cleanId = String(id || '').trim();
+  if (!cleanId) throw new Error('Article ID is required');
+  const res = await fetch(`${API_BASE}/articles/${encodeURIComponent(cleanId)}/feedback`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ isHelpful }),
@@ -321,7 +325,9 @@ export const createArticle = async (articleData) => {
  * Update an existing Knowledge Base Article (Support Manager & Admin)
  */
 export const updateArticle = async (id, articleData) => {
-  const res = await fetch(`${API_BASE}/articles/${id}`, {
+  const cleanId = String(id || '').trim();
+  if (!cleanId) throw new Error('Article ID is required');
+  const res = await fetch(`${API_BASE}/articles/${encodeURIComponent(cleanId)}`, {
     method: 'PUT',
     headers: authHeaders(),
     body: JSON.stringify(articleData),
@@ -335,7 +341,9 @@ export const updateArticle = async (id, articleData) => {
  * Delete a Knowledge Base Article (Support Manager & Admin)
  */
 export const deleteArticle = async (id) => {
-  const res = await fetch(`${API_BASE}/articles/${id}`, {
+  const cleanId = String(id || '').trim();
+  if (!cleanId) throw new Error('Article ID is required');
+  const res = await fetch(`${API_BASE}/articles/${encodeURIComponent(cleanId)}`, {
     method: 'DELETE',
     headers: authHeaders(),
   });

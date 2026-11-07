@@ -1774,6 +1774,7 @@ const Dashboard = () => {
       {selectedArticleId && (
         <ArticleDetailModal
           articleId={selectedArticleId}
+          initialArticle={articlesList.find((a) => a._id === selectedArticleId) || null}
           onClose={() => setSelectedArticleId(null)}
           onSelectArticle={(id) => setSelectedArticleId(id)}
           onEditArticle={(art) => {

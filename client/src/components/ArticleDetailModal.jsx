@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   X,
   Eye,
@@ -12,55 +12,63 @@ import {
   Edit,
   CheckCircle2,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import { getArticleById, submitArticleFeedback } from '../services/ticketService';
 import { useToast } from '../context/ToastContext';
 
 export default function ArticleDetailModal({
   articleId,
+  initialArticle = null,
   onClose,
   onSelectArticle,
   onEditArticle,
   canEdit = false,
 }) {
   const { addToast } = useToast();
-  const [article, setArticle] = useState(null);
+  const [article, setArticle] = useState(initialArticle || null);
   const [relatedArticles, setRelatedArticles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!initialArticle);
   const [error, setError] = useState(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
-  useEffect(() => {
+  const fetchArticle = useCallback(async () => {
     if (!articleId) return;
 
-    let isMounted = true;
-    setLoading(true);
+    if (!article) {
+      setLoading(true);
+    }
     setError(null);
+
+    try {
+      const data = await getArticleById(articleId);
+      if (data?.article) {
+        setArticle(data.article);
+        setRelatedArticles(data.relatedArticles || []);
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to load article details');
+      if (!article) {
+        addToast(err.message || 'Error fetching article', 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [articleId, article, addToast]);
+
+  useEffect(() => {
     setFeedbackSubmitted(false);
-
-    getArticleById(articleId)
-      .then((data) => {
-        if (isMounted) {
-          setArticle(data.article);
-          setRelatedArticles(data.relatedArticles || []);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (isMounted) {
-          setError(err.message || 'Failed to load article details');
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      isMounted = false;
-    };
+    if (initialArticle && initialArticle._id === articleId) {
+      setArticle(initialArticle);
+    } else {
+      setArticle(null);
+    }
+    fetchArticle();
   }, [articleId]);
 
   const handleFeedback = async (isHelpful) => {
-    if (feedbackSubmitted || submittingFeedback || !article) return;
+    if (feedbackSubmitted || submittingFeedback || !article?._id) return;
     setSubmittingFeedback(true);
 
     try {
@@ -82,7 +90,12 @@ export default function ArticleDetailModal({
   if (!articleId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+    >
       <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
         {/* Modal Header */}
         <div className="p-5 border-b border-slate-200 flex items-start justify-between bg-slate-50">
@@ -106,7 +119,7 @@ export default function ArticleDetailModal({
               )}
             </div>
             <h2 className="text-lg font-bold text-slate-900 leading-snug">
-              {loading ? 'Loading article...' : article?.title}
+              {article?.title || (loading ? 'Loading article...' : 'Article Details')}
             </h2>
           </div>
 
@@ -134,17 +147,39 @@ export default function ArticleDetailModal({
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-700">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 space-y-3">
+          {loading && !article ? (
+            <div className="flex flex-col items-center justify-center py-16 space-y-3">
               <div className="w-8 h-8 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
               <p className="text-sm text-slate-500 font-medium">Fetching verified article...</p>
             </div>
-          ) : error ? (
-            <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center space-x-3 text-rose-700">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <p className="text-sm font-medium">{error}</p>
+          ) : error && !article ? (
+            <div className="p-5 bg-rose-50 border border-rose-200 rounded-2xl space-y-3 text-rose-800">
+              <div className="flex items-center space-x-2">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                <span className="font-semibold text-sm">Failed to Load Article</span>
+              </div>
+              <p className="text-xs text-rose-700 leading-relaxed font-mono bg-white p-2.5 rounded-xl border border-rose-200">
+                {error}
+              </p>
+              <div className="flex items-center space-x-2 pt-1">
+                <button
+                  type="button"
+                  onClick={fetchArticle}
+                  className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 mr-1" />
+                  <span>Retry Request</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-3.5 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Close Modal
+                </button>
+              </div>
             </div>
-          ) : (
+          ) : article ? (
             <>
               {/* Meta information row */}
               <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 border-b border-slate-100 pb-3">
@@ -267,7 +302,7 @@ export default function ArticleDetailModal({
                 </div>
               )}
             </>
-          )}
+          ) : null}
         </div>
 
         {/* Modal Footer */}
@@ -284,4 +319,3 @@ export default function ArticleDetailModal({
     </div>
   );
 }
-

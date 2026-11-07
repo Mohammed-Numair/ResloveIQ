@@ -59,9 +59,16 @@ const startServer = async () => {
     try {
       await seedDemoAccounts();
       await seedCategories();
+      await Article.updateMany({ status: { $exists: false } }, { $set: { status: 'PUBLISHED' } });
+      await Article.updateMany({ notHelpfulCount: { $exists: false } }, { $set: { notHelpfulCount: 0 } });
       for (const art of DEFAULT_ARTICLES) {
         const exists = await Article.findOne({ title: art.title });
-        if (!exists) await Article.create(art);
+        if (!exists) {
+          await Article.create(art);
+        } else if (!exists.status) {
+          exists.status = 'PUBLISHED';
+          await exists.save();
+        }
       }
       await seedSampleTickets();
       console.log('✅ Default demo accounts, categories & knowledge base verified.');
