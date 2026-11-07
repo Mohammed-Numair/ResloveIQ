@@ -1,0 +1,46 @@
+name: ResolveIQ CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  audit-and-build:
+    name: Build & In-Process Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install Server Dependencies
+        run: npm ci --prefix server
+
+      - name: Install Client Dependencies
+        run: npm ci --prefix client
+
+      - name: Security Vulnerability Audit
+        run: |
+          npm audit --prefix server --audit-level=high
+          npm audit --prefix client --audit-level=high
+
+      - name: Run In-Process Unit Test Suites
+        run: npm run test:unit --prefix server
+        env:
+          NODE_ENV: test
+          JWT_SECRET: ci_test_jwt_secret_token_12345
+
+      - name: Build Production Client Bundle
+        run: npm run build --prefix client
+

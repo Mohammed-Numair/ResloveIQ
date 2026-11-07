@@ -23,10 +23,45 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
 
 // Production Security Headers & Core Middleware
 app.use(securityHeaders);
-app.use(cors());
+
+// Dynamic CORS Configuration supporting deployed Render frontend and local development
+const allowedOrigins = process.env.CLIENT_URL
+  ? process.env.CLIENT_URL.split(',').map((url) => url.trim().replace(/\/+$/, ''))
+  : null;
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow non-browser requests (mobile apps, server-to-server, curl, tests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins) {
+      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        return callback(null, true);
+      }
+      // Allow localhost dev origins
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true);
+      }
+      // Allow any Render subdomain if deployed on Render
+      if (origin.endsWith('.onrender.com')) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS policy blocked access from origin: ${origin}`));
+    }
+
+    // Default: allow all origins when CLIENT_URL is not explicitly configured
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Basic Health Check Route
@@ -91,8 +126,8 @@ const startServer = async () => {
     }
   }
 
-  app.listen(PORT, () => {
-    console.log(`ResolveIQ Server running on port ${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`ResolveIQ Server running on http://${HOST}:${PORT}`);
   });
 };
 

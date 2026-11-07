@@ -3,7 +3,9 @@
  * Communicates with ResolveIQ Express backend
  */
 
-const API_BASE = '/api/auth';
+import { AUTH_API_BASE } from './apiConfig.js';
+
+const NETWORK_ERROR_MSG = 'Unable to reach the ResolveIQ backend server. Please verify network connectivity and that the backend service is online.';
 
 /**
  * Register a new user
@@ -11,7 +13,7 @@ const API_BASE = '/api/auth';
  */
 export const registerUser = async (userData) => {
   try {
-    const response = await fetch(`${API_BASE}/register`, {
+    const response = await fetch(`${AUTH_API_BASE}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -33,7 +35,7 @@ export const registerUser = async (userData) => {
     return data;
   } catch (error) {
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      throw new Error('Unable to reach the ResolveIQ backend server. Please ensure the backend is running on port 5000.');
+      throw new Error(NETWORK_ERROR_MSG);
     }
     throw error;
   }
@@ -45,7 +47,7 @@ export const registerUser = async (userData) => {
  */
 export const loginUser = async (credentials) => {
   try {
-    const response = await fetch(`${API_BASE}/login`, {
+    const response = await fetch(`${AUTH_API_BASE}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +69,7 @@ export const loginUser = async (credentials) => {
     return data;
   } catch (error) {
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      throw new Error('Unable to reach the ResolveIQ backend server. Please ensure the backend is running on port 5000.');
+      throw new Error(NETWORK_ERROR_MSG);
     }
     throw error;
   }
@@ -79,7 +81,7 @@ export const loginUser = async (credentials) => {
  */
 export const getProfile = async (token) => {
   try {
-    const response = await fetch(`${API_BASE}/me`, {
+    const response = await fetch(`${AUTH_API_BASE}/me`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -101,9 +103,8 @@ export const getProfile = async (token) => {
     return data;
   } catch (error) {
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-      throw new Error('Unable to reach the ResolveIQ backend server. Please ensure the backend is running on port 5000.');
+      throw new Error(NETWORK_ERROR_MSG);
     }
     throw error;
   }
 };
-

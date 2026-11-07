@@ -2,7 +2,7 @@
  * Ticket, User Management & Knowledge Base API Service
  */
 
-const API_BASE = '/api';
+import { API_BASE } from './apiConfig.js';
 
 const authHeaders = () => {
   const token = localStorage.getItem('resolveiq_token');
