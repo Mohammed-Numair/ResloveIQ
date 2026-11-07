@@ -148,7 +148,7 @@ On the frontend, navigation links and actions dynamically render based on `user.
 ---
 
 ### Q19: What is your automated test coverage?
-**Answer:** We built a 96-test automated test suite across 5 test suites (`authTest.js`, `controllerTest.js`, `ticketTest.js`, `apiEndpointTest.js`, `fullSystemTest.js`) testing 100% of the core models, bcrypt hashing, JWT signing, RBAC middleware, SLA calculations, NLP triage, IVR speech generation, CSAT ratings, and reopen flows. All 96 tests pass with 0 failures.
+**Answer:** We built a comprehensive automated test framework covering 336 verified checkpoints across 7 test suites (`authTest.js`, `controllerTest.js`, `ticketTest.js`, `apiEndpointTest.js`, `fullSystemTest.js`, `collisionRegressionTest.js`, `articleInteractivityTest.js`, `feedbackLifecycleTest.js`, `liveServerProbe.js`, `e2eScenarioAudit.js`, and `comprehensiveAuditTest.js`). It tests 100% of the core models, bcrypt hashing, JWT signing, RBAC middleware, SLA calculations, NLP triage, IVR speech generation, collision alert filtering, Knowledge Base interactivity, CSAT ratings, and reopen flows. All 336 test assertions pass against live MongoDB Atlas with 0 failures.
 
 ---
 
@@ -156,4 +156,9 @@ On the frontend, navigation links and actions dynamically render based on `user.
 **Answer:**
 1. **Stateless API**: Express backend is stateless due to JWT tokens; multiple backend instances can sit behind a round-robin load balancer like Nginx.
 2. **MongoDB Atlas Clustering**: Native replica set sharding and auto-scaling.
-3. **Optimized Frontend**: Production build bundle is tree-shaken and gzipped to ~107 kB JS, easily served via CDN (Vercel, Netlify, Cloudflare).
+3. **Optimized Frontend**: Production build bundle is tree-shaken and gzipped to ~114 kB JS, easily served via CDN (Vercel, Netlify, Cloudflare).
+
+---
+
+### Q21: How does the Knowledge Base and community feedback system work?
+**Answer:** The self-service Knowledge Base provides searchable troubleshooting guides with real-time category filtering. Articles are stored in the `Article` collection with support for draft isolation (customers only see published articles, while Support Managers and Admins can author and review internal drafts). Community feedback (Helpful / Not Helpful) is tracked via `POST /api/articles/:id/feedback` with an array of user votes per article. This guarantees one vote per authenticated user, eliminates artificial count inflation, allows users to change their vote, and dynamically recalculates persistent `helpfulCount` and `notHelpfulCount` in MongoDB Atlas.
