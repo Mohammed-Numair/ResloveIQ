@@ -89,33 +89,45 @@ npm run dev
 ### 5. Collision Awareness (Active Viewers)
 - Live heartbeat presence alerts support agents if another team member is currently viewing the same ticket, preventing duplicate work.
 
-### 6. Real MongoDB Aggregation Analytics
+### 6. Interactive Self-Service Knowledge Base & Staff Authoring
+- **Searchable Troubleshooting Guides**: Fast text and keyword search across title, content, and tags with category filtering (`TECHNICAL`, `PAYMENTS_UPI`, `BILLING`, `ACCOUNT`, `GENERAL`).
+- **Interactive Reading Modal**: Clean modal displaying verified guidance, author attribution, formatted last update date, view counts, and context-aware related articles.
+- **Community Helpfulness Feedback**: Customers and staff can vote on articles (thumbs up/down) with atomic persistence in MongoDB Atlas.
+- **Staff Authoring & Role Permissions**: Support Managers and Admins can create, edit, publish, and archive knowledge articles with draft isolation from customers.
+
+### 7. Real MongoDB Aggregation Analytics
 - Live aggregation pipelines for category volume, priority breakdown, triaged customer sentiment, and agent workload distribution.
 - One-click CSV report export.
 
 ---
 
-## Automated Test Suite (96 Tests Passing)
+## Automated Test Suite (150 Tests Passing)
 
-Run all backend automated test suites:
+Run the backend unit test suite:
 ```powershell
 cd server
-npm test
+npm run test:unit
 ```
+*(Runs 96 unit, model, controller, and system tests in-memory).*
+
+Run the live Atlas integration & regression suites:
+```powershell
+cd server
+npm run test:live
+```
+*(Runs 25 ticket collision isolation regression tests + 29 knowledge base interactivity and RBAC tests against MongoDB Atlas).*
 
 ```text
 =======================================
-Test Results: 18/18 tests passed. (authTest.js)
-End-to-End Auth Results: 31/31 tests passed. (controllerTest.js)
-Ticket & Intelligent Engine Tests: 21/21 passed. (ticketTest.js)
-In-Process API Tests: 5/5 tests passed. (apiEndpointTest.js)
-Master System Test Results: 21/21 passed. (fullSystemTest.js)
+Unit & In-Process Tests: 96/96 passed (100%)
+Collision Regression Tests: 25/25 passed (100%)
+Knowledge Base Interactivity Tests: 29/29 passed (100%)
 =======================================
-Total: 96 / 96 passed (100% success rate)
+Total: 150 / 150 passed (100% success rate)
 ```
 
-Run the live MongoDB Atlas verification script:
+Run the live MongoDB Atlas comprehensive audit script:
 ```powershell
-node server/test/liveAtlasVerification.js
+node server/test/comprehensiveAuditTest.js
 ```
-*(Directly queries live MongoDB Atlas cluster, verifies all 6 models, Call PINs, assignments, and CSAT persistence).*
+*(Directly queries live MongoDB Atlas cluster, verifies all models, Call PINs, assignments, collision alerts, knowledge base, and CSAT persistence across 84 audit checkpoints).*
