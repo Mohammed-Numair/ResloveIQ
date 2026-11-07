@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Link } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
+import { TicketProvider } from './context/TicketContext';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
@@ -32,30 +34,34 @@ const NotFound = () => (
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-          <Navbar />
-          <main className="flex-1">
-            <Routes>
-              <Route path="/" element={<HomeRedirect />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </main>
-          <footer className="py-4 border-t border-slate-200 text-center text-[11px] text-slate-400 bg-white">
-            ResolveIQ Intelligent Customer Helpdesk &bull; Phase 1 Authentication
-          </footer>
-        </div>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <TicketProvider>
+            <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+              <Navbar />
+              <main className="flex-1">
+                <Routes>
+                  <Route path="/" element={<HomeRedirect />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </main>
+              <footer className="py-4 border-t border-slate-200 text-center text-[11px] text-slate-400 bg-white">
+                ResolveIQ &bull; Understand Faster. Resolve Smarter. &bull; Course 21CSC705T Intelligent Systems
+              </footer>
+            </div>
+          </TicketProvider>
+        </AuthProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }

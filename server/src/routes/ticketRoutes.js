@@ -6,6 +6,11 @@ import {
   updateTicketStatus,
   assignTicket,
   addTicketMessage,
+  rateTicket,
+  reopenTicket,
+  escalateTicket,
+  lookupTicketByCallPin,
+  setViewerPresence,
   getTicketAnalytics,
   exportTicketsCSV,
 } from '../controllers/ticketController.js';
@@ -28,6 +33,9 @@ router.get(
   authorize(USER_ROLES.SUPPORT_MANAGER, USER_ROLES.ADMIN),
   exportTicketsCSV
 );
+
+// Telephony IVR lookup by Call PIN (can be called by customer or automated phone interface)
+router.get('/lookup/pin/:pin', lookupTicketByCallPin);
 
 // General ticket list and creation
 router.route('/')
@@ -58,5 +66,29 @@ router.post(
   addTicketMessage
 );
 
-export default router;
+router.put(
+  '/:id/rate',
+  protect,
+  rateTicket
+);
 
+router.put(
+  '/:id/reopen',
+  protect,
+  reopenTicket
+);
+
+router.put(
+  '/:id/escalate',
+  protect,
+  authorize(USER_ROLES.SUPPORT_AGENT, USER_ROLES.SUPPORT_MANAGER, USER_ROLES.ADMIN),
+  escalateTicket
+);
+
+router.post(
+  '/:id/viewing',
+  protect,
+  setViewerPresence
+);
+
+export default router;

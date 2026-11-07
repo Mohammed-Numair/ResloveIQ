@@ -86,14 +86,89 @@ export const assignTicket = async (id, agentId) => {
 /**
  * Add a public reply or internal private note
  */
-export const addTicketMessage = async (id, message, isInternal = false) => {
+export const addTicketMessage = async (id, message, isInternal = false, attachments = []) => {
   const res = await fetch(`${API_BASE}/tickets/${id}/messages`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ message, isInternal }),
+    body: JSON.stringify({ message, isInternal, attachments }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to post message');
+  return data;
+};
+
+/**
+ * Submit Customer Satisfaction (CSAT) Rating
+ */
+export const rateTicket = async (id, score, comment = '') => {
+  const res = await fetch(`${API_BASE}/tickets/${id}/rate`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ score, comment }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to submit satisfaction rating');
+  return data;
+};
+
+/**
+ * Reopen a resolved ticket
+ */
+export const reopenTicket = async (id, reason = '') => {
+  const res = await fetch(`${API_BASE}/tickets/${id}/reopen`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to reopen ticket');
+  return data;
+};
+
+/**
+ * Escalate a ticket
+ */
+export const escalateTicket = async (id, reason = '') => {
+  const res = await fetch(`${API_BASE}/tickets/${id}/escalate`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to escalate ticket');
+  return data;
+};
+
+/**
+ * Lookup ticket by 6-digit Call PIN (Voice IVR Phone Telephony Simulation)
+ */
+export const lookupTicketByCallPin = async (pin) => {
+  const res = await fetch(`${API_BASE}/tickets/lookup/pin/${encodeURIComponent(pin)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Ticket not found for Call PIN');
+  return data;
+};
+
+/**
+ * Send active viewer presence heartbeat
+ */
+export const sendViewerHeartbeat = async (id) => {
+  const res = await fetch(`${API_BASE}/tickets/${id}/viewing`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) return { activeViewers: [] };
+  return data;
+};
+
+/**
+ * Fetch Categories with Guided Troubleshooting & Policy definitions
+ */
+export const getCategories = async () => {
+  const res = await fetch(`${API_BASE}/categories`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch categories');
   return data;
 };
 
@@ -201,4 +276,3 @@ export const getSuggestedArticles = async (queryText) => {
   if (!res.ok) return { suggestions: [] };
   return data;
 };
-

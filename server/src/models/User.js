@@ -8,6 +8,12 @@ export const USER_ROLES = {
   CUSTOMER: 'CUSTOMER',
 };
 
+export const AVAILABILITY_STATUSES = {
+  AVAILABLE: 'AVAILABLE',
+  BUSY: 'BUSY',
+  OFFLINE: 'OFFLINE',
+};
+
 const userSchema = new mongoose.Schema(
   {
     name: {
@@ -31,7 +37,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Please provide a password'],
       minlength: [6, 'Password must be at least 6 characters long'],
-      select: false, // Do not return password by default in queries
+      select: false,
     },
     role: {
       type: String,
@@ -40,6 +46,31 @@ const userSchema = new mongoose.Schema(
         message: '{VALUE} is not a valid role. Allowed roles: ADMIN, SUPPORT_MANAGER, SUPPORT_AGENT, CUSTOMER',
       },
       default: USER_ROLES.CUSTOMER,
+    },
+    phone: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    department: {
+      type: String,
+      trim: true,
+      default: 'Customer Support',
+    },
+    skills: {
+      type: [String],
+      default: ['GENERAL'],
+    },
+    availabilityStatus: {
+      type: String,
+      enum: Object.values(AVAILABILITY_STATUSES),
+      default: AVAILABILITY_STATUSES.AVAILABLE,
+    },
+    maxWorkload: {
+      type: Number,
+      default: 5,
+      min: 1,
+      max: 20,
     },
   },
   {
@@ -66,4 +97,3 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
 const User = mongoose.model('User', userSchema);
 
 export default User;
-

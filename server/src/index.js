@@ -8,8 +8,10 @@ import authRoutes from './routes/authRoutes.js';
 import ticketRoutes from './routes/ticketRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import articleRoutes from './routes/articleRoutes.js';
+import categoryRoutes from './routes/categoryRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import { seedDemoAccounts } from './utils/seedData.js';
+import { seedCategories } from './controllers/categoryController.js';
 import Article, { DEFAULT_ARTICLES } from './models/Article.js';
 
 // Resolve directory path so .env is always loaded reliably
@@ -38,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tickets', ticketRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/articles', articleRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // Error Handling Middleware
 app.use(notFound);
@@ -51,14 +54,15 @@ const startServer = async () => {
     console.warn('⚠️  MONGODB_URI still contains placeholder angle brackets < >. Please remove them in server/.env.');
   } else {
     await connectDB();
-    // Seed default role demo accounts & articles if needed
+    // Seed default role demo accounts, categories & articles if needed
     try {
       await seedDemoAccounts();
+      await seedCategories();
       for (const art of DEFAULT_ARTICLES) {
         const exists = await Article.findOne({ title: art.title });
         if (!exists) await Article.create(art);
       }
-      console.log('✅ Default demo accounts & knowledge base verified.');
+      console.log('✅ Default demo accounts, categories & knowledge base verified.');
     } catch (err) {
       console.warn('⚠️  Auto-seeding skipped:', err.message);
     }
