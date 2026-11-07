@@ -311,3 +311,4 @@
 - **Description:** Returns all configured support categories, step-by-step troubleshooting steps, and policy rules (`ALLOW_DIY`, `ASSIST_ONLY`, `RESTRICTED_CALL_REQUIRED`).
 - **Authentication:** Public
 - **HTTP Status Codes:** `200 OK`.
+
