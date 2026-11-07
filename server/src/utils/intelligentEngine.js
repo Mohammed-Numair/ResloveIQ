@@ -43,11 +43,14 @@ const performRuleBasedAnalysis = (title, description, text) => {
 
   // 2. Category Suggestion
   let suggestedCategory = 'GENERAL';
+  const upiKeywords = ['upi', 'gpay', 'phonepe', 'paytm', 'utr', 'bank', 'debited', 'double charge', 'transfer'];
   const technicalKeywords = ['error', 'bug', 'crash', 'exception', 'server', 'database', 'api', 'slow', 'fail', 'code', 'build', 'syntax'];
-  const billingKeywords = ['billing', 'invoice', 'payment', 'charge', 'card', 'refund', 'money', 'subscription', 'price', 'fee'];
+  const billingKeywords = ['billing', 'invoice', 'charge', 'card', 'refund', 'money', 'subscription', 'price', 'fee'];
   const accountKeywords = ['login', 'password', 'account', 'auth', 'access', 'reset', 'profile', 'email', 'locked', 'mfa', 'jwt'];
 
-  if (technicalKeywords.some((w) => text.includes(w))) {
+  if (upiKeywords.some((w) => text.includes(w))) {
+    suggestedCategory = 'PAYMENTS_UPI';
+  } else if (technicalKeywords.some((w) => text.includes(w))) {
     suggestedCategory = 'TECHNICAL';
   } else if (billingKeywords.some((w) => text.includes(w))) {
     suggestedCategory = 'BILLING';
@@ -74,6 +77,9 @@ const performRuleBasedAnalysis = (title, description, text) => {
   // 5. Contextual Suggested Agent Reply
   let suggestedReply = '';
   switch (suggestedCategory) {
+    case 'PAYMENTS_UPI':
+      suggestedReply = `Hello, thank you for reaching out to ResolveIQ Payment Support. We have logged your transaction inquiry for "${title}". We are verifying the bank reference UTR with our gateway partner to initiate reconciliation or refund.`;
+      break;
     case 'TECHNICAL':
       suggestedReply = `Hello, thank you for contacting ResolveIQ Technical Support. We have logged this issue regarding "${title}". Our engineering team is currently investigating the logs. Could you share any error codes or steps to reproduce?`;
       break;

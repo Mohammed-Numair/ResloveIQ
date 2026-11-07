@@ -177,3 +177,4 @@ export const seedSampleTickets = async () => {
     console.warn('⚠️  Ticket sample seeding skipped:', error.message);
   }
 };
+

@@ -180,6 +180,7 @@ const Dashboard = () => {
 
   // Open Ticket Details Modal
   const handleOpenTicket = async (id) => {
+    setActiveViewers([]);
     setLoadingDetails(true);
     setShowReopenInput(false);
     setReopenReason('');
@@ -188,7 +189,11 @@ const Dashboard = () => {
       setSelectedTicket(data.ticket);
       // Trigger initial viewer presence
       const heartbeat = await sendViewerHeartbeat(id);
-      setActiveViewers(heartbeat.activeViewers || []);
+      if (isStaff) {
+        setActiveViewers(heartbeat.activeViewers || []);
+      } else {
+        setActiveViewers([]);
+      }
     } catch (err) {
       toast.error(err.message);
     } finally {
@@ -202,14 +207,18 @@ const Dashboard = () => {
     const interval = setInterval(async () => {
       try {
         const res = await sendViewerHeartbeat(selectedTicket._id);
-        setActiveViewers(res.activeViewers || []);
+        if (isStaff) {
+          setActiveViewers(res.activeViewers || []);
+        } else {
+          setActiveViewers([]);
+        }
       } catch {
         // ignore presence heartbeat errors
       }
     }, 12000);
 
     return () => clearInterval(interval);
-  }, [selectedTicket?._id]);
+  }, [selectedTicket?._id, isStaff]);
 
   // Update Status
   const handleStatusChange = async (newStatus) => {
@@ -1040,20 +1049,26 @@ const Dashboard = () => {
               </div>
 
               <button
-                onClick={() => setSelectedTicket(null)}
+                onClick={() => {
+                  setSelectedTicket(null);
+                  setActiveViewers([]);
+                }}
                 className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            {/* Active Viewer Collision Banner */}
-            {activeViewers.length > 0 && (
-              <div className="bg-amber-500 text-slate-950 px-4 py-2 text-xs font-bold flex items-center space-x-2">
+            {/* Staff Collision Alert Banner (Staff Only) */}
+            {isStaff && activeViewers.length > 0 && (
+              <div className="bg-amber-500 text-slate-950 px-4 py-2.5 text-xs font-bold flex items-center space-x-2 border-b border-amber-600 shadow-xs animate-slide-in">
                 <Eye className="w-4 h-4 flex-shrink-0" />
                 <span>
-                  Active Collision Alert: {activeViewers.map((v) => v.userName).join(', ')}{' '}
-                  (currently viewing this ticket)
+                  Staff Collision Alert:{' '}
+                  {activeViewers
+                    .map((v) => `${v.userName} (${(v.userRole || 'STAFF').replace('_', ' ')})`)
+                    .join(', ')}{' '}
+                  is currently viewing this ticket.
                 </span>
               </div>
             )}

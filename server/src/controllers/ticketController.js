@@ -7,12 +7,28 @@ import Activity from '../models/Activity.js';
 import { analyzeTicket } from '../utils/intelligentEngine.js';
 
 /**
- * Filter internal notes out of messages for customer role
+ * Sanitize ticket based on user role:
+ * - Customers never see internal notes (isInternal: true)
+ * - Customers must NEVER see internal ticket collision alerts, staff presence information, or internal collaboration metadata
+ * - Staff members only receive collision alerts for other active staff viewers (< 2 minutes old)
  */
-const sanitizeTicketForRole = (ticket, userRole) => {
+const sanitizeTicketForRole = (ticket, userRole, currentUserId = null) => {
   const ticketObj = ticket.toObject ? ticket.toObject() : { ...ticket };
-  if (userRole === USER_ROLES.CUSTOMER && ticketObj.messages) {
-    ticketObj.messages = ticketObj.messages.filter((m) => !m.isInternal);
+  if (userRole === USER_ROLES.CUSTOMER) {
+    if (ticketObj.messages) {
+      ticketObj.messages = ticketObj.messages.filter((m) => !m.isInternal);
+    }
+    ticketObj.activeViewers = [];
+  } else {
+    if (ticketObj.activeViewers) {
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+      ticketObj.activeViewers = ticketObj.activeViewers.filter((v) => {
+        const isFresh = new Date(v.lastSeen) > twoMinutesAgo;
+        const isOther = currentUserId ? v.userId?.toString() !== currentUserId.toString() : true;
+        const isStaff = [USER_ROLES.SUPPORT_AGENT, USER_ROLES.SUPPORT_MANAGER, USER_ROLES.ADMIN].includes(v.userRole);
+        return isFresh && isOther && isStaff;
+      });
+    }
   }
   return ticketObj;
 };
@@ -197,7 +213,7 @@ export const getTicketById = async (req, res, next) => {
 
     return res.status(200).json({
       success: true,
-      ticket: sanitizeTicketForRole(ticket, req.user.role),
+      ticket: sanitizeTicketForRole(ticket, req.user.role, req.user._id),
     });
   } catch (error) {
     next(error);
@@ -750,12 +766,12 @@ export const setViewerPresence = async (req, res, next) => {
     }
 
     const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-    // Purge stale viewers
+    // Purge stale viewers (> 2 minutes) and existing entry for current user
     ticket.activeViewers = (ticket.activeViewers || []).filter(
-      (v) => v.lastSeen > twoMinutesAgo && v.userId.toString() !== req.user._id.toString()
+      (v) => new Date(v.lastSeen) > twoMinutesAgo && v.userId.toString() !== req.user._id.toString()
     );
 
-    // Add current user
+    // Record current user's active presence
     ticket.activeViewers.push({
       userId: req.user._id,
       userName: req.user.name,
@@ -765,13 +781,41 @@ export const setViewerPresence = async (req, res, next) => {
 
     await ticket.save();
 
-    const otherViewers = ticket.activeViewers.filter(
-      (v) => v.userId.toString() !== req.user._id.toString()
+    // 1. Customers must NEVER see internal ticket collision alerts, staff presence information, or internal collaboration metadata
+    if (req.user.role === USER_ROLES.CUSTOMER) {
+      return res.status(200).json({
+        success: true,
+        activeViewers: [],
+        staffColliding: false,
+      });
+    }
+
+    // 2. For staff (SUPPORT_AGENT, SUPPORT_MANAGER, ADMIN):
+    // Identify OTHER support staff members actively viewing the ticket
+    const otherStaffViewers = ticket.activeViewers.filter(
+      (v) =>
+        v.userId.toString() !== req.user._id.toString() &&
+        [USER_ROLES.SUPPORT_AGENT, USER_ROLES.SUPPORT_MANAGER, USER_ROLES.ADMIN].includes(v.userRole)
+    );
+
+    // 3. Clearly distinguish CUSTOMER viewers from SUPPORT_AGENT and SUPPORT_MANAGER viewers
+    const activeCustomerViewers = ticket.activeViewers.filter(
+      (v) =>
+        v.userId.toString() !== req.user._id.toString() &&
+        v.userRole === USER_ROLES.CUSTOMER
     );
 
     return res.status(200).json({
       success: true,
-      activeViewers: otherViewers,
+      activeViewers: otherStaffViewers,
+      staffColliding: otherStaffViewers.length > 0,
+      customerViewing: activeCustomerViewers.length > 0,
+      customerViewers: activeCustomerViewers.map((c) => ({
+        userId: c.userId,
+        userName: c.userName,
+        userRole: c.userRole,
+        lastSeen: c.lastSeen,
+      })),
     });
   } catch (error) {
     next(error);
