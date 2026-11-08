@@ -11,13 +11,41 @@ const isDbConnected = () => {
 };
 
 /**
- * Execute query bounded by safe timeout if supported by query builder
+ * Execute database query bounded by a genuine JavaScript Promise timeout
+ * and MongoDB server-side maxTimeMS constraint.
+ * Cleans up timer handles immediately to prevent timer leaks.
  */
-const execWithTimeout = (query, timeoutMs = 5000) => {
-  if (query && typeof query.maxTimeMS === 'function') {
-    return query.maxTimeMS(timeoutMs);
+const execWithTimeout = async (query, timeoutMs = 5000) => {
+  let timer;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error(`Database query timed out after ${timeoutMs}ms.`);
+      err.name = 'DatabaseTimeoutError';
+      err.statusCode = 504;
+      reject(err);
+    }, timeoutMs);
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
+  });
+
+  try {
+    let queryPromise;
+    if (query && typeof query.maxTimeMS === 'function') {
+      query.maxTimeMS(timeoutMs);
+      queryPromise = typeof query.exec === 'function' ? query.exec() : query;
+    } else {
+      queryPromise = query;
+    }
+
+    const result = await Promise.race([queryPromise, timeoutPromise]);
+    return result;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
   }
-  return query;
 };
 
 /**
@@ -139,6 +167,18 @@ export const registerUser = async (req, res, next) => {
       },
     });
   } catch (error) {
+    if (error.name === 'DatabaseTimeoutError' || error.message?.includes('timed out')) {
+      return res.status(504).json({
+        success: false,
+        message: 'Database query timed out. Please try again.',
+      });
+    }
+    if (error.name === 'MongooseError' || error.name === 'MongoNetworkError') {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection unavailable. Please try again shortly.',
+      });
+    }
     next(error);
   }
 };
@@ -201,6 +241,18 @@ export const loginUser = async (req, res, next) => {
       },
     });
   } catch (error) {
+    if (error.name === 'DatabaseTimeoutError' || error.message?.includes('timed out')) {
+      return res.status(504).json({
+        success: false,
+        message: 'Database query timed out. Please try again.',
+      });
+    }
+    if (error.name === 'MongooseError' || error.name === 'MongoNetworkError') {
+      return res.status(503).json({
+        success: false,
+        message: 'Database connection unavailable. Please try again shortly.',
+      });
+    }
     next(error);
   }
 };

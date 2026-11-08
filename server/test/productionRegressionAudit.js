@@ -210,6 +210,16 @@ async function runRegressionSuite() {
   assert(loginDisconnected.body.success === false, '503 response includes success: false');
   assert(loginDisconnected.body.message.includes('Database is currently not connected'), 'Informative database message returned without hanging');
 
+  const johnLoginDisconnected = await simulateRequest({
+    method: 'POST',
+    url: '/api/auth/login',
+    body: {
+      email: 'john@example.com',
+      password: 'Password@123',
+    },
+  });
+  assert(johnLoginDisconnected.status === 503, 'Customer John login returns HTTP 503 fail-fast when database is unavailable');
+
   console.log('\n--- 6. Frontend Timeout Wrapper Verification ---');
   // Test fetchWithTimeout abort trigger
   let timeoutTriggered = false;

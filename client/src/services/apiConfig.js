@@ -37,11 +37,10 @@ export const fetchWithTimeout = async (url, options = {}, timeoutMs = 15000) => 
     return response;
   } catch (error) {
     if (error.name === 'AbortError' || error.message.includes('aborted')) {
-      throw new Error(`Connection timed out after ${Math.round(timeoutMs / 1000)}s. The backend server took too long to respond.`);
+      throw new Error(`Connection timed out after ${Math.round(timeoutMs / 1000)}s. The backend server took too long to respond. If the service was sleeping from inactivity, please try again.`);
     }
     throw error;
   } finally {
     clearTimeout(timer);
   }
 };
-

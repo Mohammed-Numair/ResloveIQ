@@ -25,6 +25,12 @@ export const DEMO_ACCOUNTS = [
     password: 'Customer@12345',
     role: USER_ROLES.CUSTOMER,
   },
+  {
+    name: 'John Customer (Customer)',
+    email: 'john@example.com',
+    password: 'Password@123',
+    role: USER_ROLES.CUSTOMER,
+  },
 ];
 
 /**

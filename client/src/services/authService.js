@@ -19,7 +19,7 @@ export const registerUser = async (userData) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(userData),
-    }, 15000);
+    }, 60000);
 
     let data;
     try {
@@ -56,7 +56,7 @@ export const loginUser = async (credentials) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
-    }, 15000);
+    }, 60000);
 
     let data;
     try {
@@ -93,7 +93,7 @@ export const getProfile = async (token) => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-    }, 10000);
+    }, 15000);
 
     let data;
     try {
