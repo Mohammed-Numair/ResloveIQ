@@ -33,6 +33,8 @@ function simulateRequest({ method = 'GET', url = '/', body = {}, headers = {} })
     let statusCode = 200;
     let responseData = null;
 
+    const resHeaders = {};
+
     const res = {
       statusCode: 200,
       status(code) {
@@ -40,16 +42,23 @@ function simulateRequest({ method = 'GET', url = '/', body = {}, headers = {} })
         res.statusCode = code;
         return res;
       },
+      setHeader(name, value) {
+        resHeaders[name.toLowerCase()] = value;
+      },
+      getHeader(name) {
+        return resHeaders[name.toLowerCase()];
+      },
       json(data) {
         responseData = data;
-        resolve({ status: statusCode, body: responseData });
+        resolve({ status: res.statusCode, headers: resHeaders, body: responseData });
       },
       send(data) {
         responseData = data;
-        resolve({ status: statusCode, body: responseData });
+        resolve({ status: res.statusCode, headers: resHeaders, body: responseData });
       },
-      setHeader() {},
-      getHeader() {},
+      end() {
+        resolve({ status: res.statusCode, headers: resHeaders, body: responseData });
+      },
     };
 
     app(req, res, (err) => {
@@ -90,6 +99,63 @@ async function runTests() {
   // 7. 404 Route handler
   const notFound = await simulateRequest({ method: 'GET', url: '/api/unknown-endpoint' });
   assert(notFound.status === 404, 'Unknown endpoint returns HTTP 404');
+
+  // 8. Health check diagnostic fields
+  assert(typeof health.body.uptime === 'number', 'GET /api/health includes process uptime');
+  assert(typeof health.body.database === 'string', 'GET /api/health includes database status');
+
+  // 9. CORS Preflight OPTIONS /api/auth/login with Vercel origin
+  const vercelPreflight = await simulateRequest({
+    method: 'OPTIONS',
+    url: '/api/auth/login',
+    headers: {
+      origin: 'https://resolveiq.vercel.app',
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type',
+    },
+  });
+  assert(vercelPreflight.status === 204, 'OPTIONS /api/auth/login from Vercel origin returns HTTP 204 No Content');
+  assert(vercelPreflight.headers['access-control-allow-origin'] === 'https://resolveiq.vercel.app', 'Vercel preflight reflects allowed Access-Control-Allow-Origin');
+  assert(vercelPreflight.headers['access-control-allow-methods'].includes('POST'), 'Vercel preflight permits POST method');
+
+  // 10. CORS Preflight OPTIONS /api/auth/login with Localhost origin
+  const localPreflight = await simulateRequest({
+    method: 'OPTIONS',
+    url: '/api/auth/login',
+    headers: {
+      origin: 'http://localhost:5173',
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type',
+    },
+  });
+  assert(localPreflight.status === 204, 'OPTIONS /api/auth/login from Localhost returns HTTP 204');
+  assert(localPreflight.headers['access-control-allow-origin'] === 'http://localhost:5173', 'Localhost preflight reflects Access-Control-Allow-Origin');
+
+  // 11. CORS Preflight OPTIONS /api/auth/login with Render origin
+  const renderPreflight = await simulateRequest({
+    method: 'OPTIONS',
+    url: '/api/auth/login',
+    headers: {
+      origin: 'https://resolveiq-client.onrender.com',
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type',
+    },
+  });
+  assert(renderPreflight.status === 204, 'OPTIONS /api/auth/login from Render subdomain returns HTTP 204');
+  assert(renderPreflight.headers['access-control-allow-origin'] === 'https://resolveiq-client.onrender.com', 'Render preflight reflects Access-Control-Allow-Origin');
+
+  // 12. Non-allowed origin does not throw 500 crash
+  const foreignPreflight = await simulateRequest({
+    method: 'OPTIONS',
+    url: '/api/auth/login',
+    headers: {
+      origin: 'https://malicious-site.example.com',
+      'access-control-request-method': 'POST',
+      'access-control-request-headers': 'content-type',
+    },
+  });
+  assert(foreignPreflight.status !== 500, 'Non-allowed origin preflight does not trigger HTTP 500 crash');
+  assert(!foreignPreflight.headers['access-control-allow-origin'], 'Non-allowed origin does not receive Access-Control-Allow-Origin');
 
   console.log(`\n=======================================`);
   console.log(`In-Process API Tests: ${passed}/${total} tests passed.`);

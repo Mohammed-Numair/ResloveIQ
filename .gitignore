@@ -26,6 +26,8 @@ build/
 # Editor directories and system files
 .vscode/
 .idea/
+.temp_edge/
+.vite-temp/
 *.suo
 *.ntvs*
 *.njsproj

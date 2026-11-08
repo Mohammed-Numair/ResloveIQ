@@ -1,10 +1,14 @@
 import mongoose from 'mongoose';
 
+// Fail fast on disconnected database: do not buffer queries indefinitely in memory
+mongoose.set('bufferCommands', false);
+
 const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
+      connectTimeoutMS: 5000,
+      socketTimeoutMS: 15000,
       maxPoolSize: 20,
       minPoolSize: 2,
     });

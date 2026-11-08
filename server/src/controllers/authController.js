@@ -11,6 +11,16 @@ const isDbConnected = () => {
 };
 
 /**
+ * Execute query bounded by safe timeout if supported by query builder
+ */
+const execWithTimeout = (query, timeoutMs = 5000) => {
+  if (query && typeof query.maxTimeMS === 'function') {
+    return query.maxTimeMS(timeoutMs);
+  }
+  return query;
+};
+
+/**
  * @desc    Seed demo accounts for evaluation
  * @route   POST /api/auth/seed
  * @access  Public
@@ -97,8 +107,8 @@ export const registerUser = async (req, res, next) => {
     // Staff roles (ADMIN, SUPPORT_MANAGER, SUPPORT_AGENT) can only be created by Admins or seed data.
     const assignedRole = USER_ROLES.CUSTOMER;
 
-    // Check if user already exists
-    const userExists = await User.findOne({ email: email.toLowerCase().trim() });
+    // Check if user already exists (bounded by safe query timeout)
+    const userExists = await execWithTimeout(User.findOne({ email: email.toLowerCase().trim() }));
     if (userExists) {
       return res.status(400).json({
         success: false,
@@ -157,8 +167,8 @@ export const loginUser = async (req, res, next) => {
       });
     }
 
-    // Find user by email and explicitly select password field
-    const user = await User.findOne({ email: email.toLowerCase().trim() }).select('+password');
+    // Find user by email and explicitly select password field (bounded by 5s query timeout)
+    const user = await execWithTimeout(User.findOne({ email: email.toLowerCase().trim() }).select('+password'));
 
     if (!user) {
       return res.status(401).json({

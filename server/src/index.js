@@ -30,49 +30,68 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Production Security Headers & Core Middleware
 app.use(securityHeaders);
 
-// Dynamic CORS Configuration supporting deployed Render frontend and local development
+// Structured Production Request Logging Middleware
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    const origin = req.headers.origin || 'same-origin';
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] ${req.method} ${req.originalUrl || req.url} ${res.statusCode} (${duration}ms) Origin: ${origin}`);
+  });
+  next();
+});
+
+// Dynamic CORS Configuration supporting deployed Render frontend, Vercel frontend, and local development
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(',').map((url) => url.trim().replace(/\/+$/, ''))
   : null;
 
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // non-browser requests
+  if (allowedOrigins) {
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) return true;
+  }
+  // Local development origins
+  if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+  // Render subdomains (e.g. resolveiq-client.onrender.com)
+  if (/^https:\/\/[a-zA-Z0-9_-]+\.onrender\.com$/.test(origin)) return true;
+  // Vercel deployment subdomains (e.g. resolveiq.vercel.app or preview URLs)
+  if (/^https:\/\/[a-zA-Z0-9_-]+\.vercel\.app$/.test(origin)) return true;
+  return false;
+};
+
 const corsOptions = {
   origin: (origin, callback) => {
-    // Allow non-browser requests (mobile apps, server-to-server, curl, tests)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins) {
-      if (allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
-        return callback(null, true);
-      }
-      // Allow localhost dev origins
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-        return callback(null, true);
-      }
-      // Allow any Render subdomain if deployed on Render
-      if (origin.endsWith('.onrender.com')) {
-        return callback(null, true);
-      }
-      return callback(new Error(`CORS policy blocked access from origin: ${origin}`));
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
     }
-
-    // Default: allow all origins when CLIENT_URL is not explicitly configured
-    return callback(null, true);
+    // Return callback(null, false) rather than throwing to avoid Express 500 error cascades
+    return callback(null, false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  optionsSuccessStatus: 204,
 };
 
 app.use(cors(corsOptions));
+
+// Explicit CORS preflight handler for all routes (fast-path resolution)
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 // Health Check Handler (supports both /api/health and /health)
 const handleHealthCheck = (req, res) => {
+  const isDbConnected = mongoose.connection.readyState === 1;
   res.status(200).json({
     status: 'ok',
-    message: 'ResolveIQ Backend API is running',
+    message: isDbConnected ? 'ResolveIQ Backend API is fully operational' : 'ResolveIQ Backend API is running (database disconnected)',
     environment: process.env.NODE_ENV || 'development',
-    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    database: isDbConnected ? 'connected' : 'disconnected',
+    health: isDbConnected ? 'healthy' : 'degraded',
+    uptime: Math.floor(process.uptime()),
     timestamp: new Date().toISOString(),
   });
 };
@@ -124,37 +143,49 @@ app.use(errorHandler);
 
 // Start Server Function
 const startServer = async () => {
-  if (!process.env.MONGODB_URI) {
-    console.warn('⚠️  MONGODB_URI is not defined in server/.env. Server running without DB connection.');
-  } else if (process.env.MONGODB_URI.includes('<') || process.env.MONGODB_URI.includes('>')) {
-    console.warn('⚠️  MONGODB_URI still contains placeholder angle brackets < >. Please remove them in server/.env.');
-  } else {
-    await connectDB();
-    // Seed default role demo accounts, categories, articles & sample tickets if needed
-    try {
-      await seedDemoAccounts();
-      await seedCategories();
-      await Article.updateMany({ status: { $exists: false } }, { $set: { status: 'PUBLISHED' } });
-      await Article.updateMany({ notHelpfulCount: { $exists: false } }, { $set: { notHelpfulCount: 0 } });
-      for (const art of DEFAULT_ARTICLES) {
-        const exists = await Article.findOne({ title: art.title });
-        if (!exists) {
-          await Article.create(art);
-        } else if (!exists.status) {
-          exists.status = 'PUBLISHED';
-          await exists.save();
-        }
-      }
-      await seedSampleTickets();
-      console.log('✅ Default demo accounts, categories & knowledge base verified.');
-    } catch (err) {
-      console.warn('⚠️  Auto-seeding skipped:', err.message);
-    }
-  }
-
+  // Bind HTTP server immediately so health checks and preflight requests respond without delay
   app.listen(PORT, HOST, () => {
     console.log(`ResolveIQ Server running on http://${HOST}:${PORT}`);
   });
+
+  if (!process.env.MONGODB_URI) {
+    console.warn('⚠️  MONGODB_URI is not defined in server/.env. Server running without DB connection.');
+    return;
+  }
+  if (process.env.MONGODB_URI.includes('<') || process.env.MONGODB_URI.includes('>')) {
+    console.warn('⚠️  MONGODB_URI still contains placeholder angle brackets < >. Please remove them in server/.env.');
+    return;
+  }
+
+  // Connect and run initial database verify/seed in background without blocking server startup
+  (async () => {
+    try {
+      const conn = await connectDB();
+      if (!conn) return;
+
+      try {
+        await seedDemoAccounts();
+        await seedCategories();
+        await Article.updateMany({ status: { $exists: false } }, { $set: { status: 'PUBLISHED' } });
+        await Article.updateMany({ notHelpfulCount: { $exists: false } }, { $set: { notHelpfulCount: 0 } });
+        for (const art of DEFAULT_ARTICLES) {
+          const exists = await Article.findOne({ title: art.title });
+          if (!exists) {
+            await Article.create(art);
+          } else if (!exists.status) {
+            exists.status = 'PUBLISHED';
+            await exists.save();
+          }
+        }
+        await seedSampleTickets();
+        console.log('✅ Default demo accounts, categories & knowledge base verified.');
+      } catch (err) {
+        console.warn('⚠️  Auto-seeding skipped:', err.message);
+      }
+    } catch (err) {
+      console.error('⚠️  Background database connection error:', err.message);
+    }
+  })();
 };
 
 // Only listen if executed directly (not when imported in tests)

@@ -52,6 +52,11 @@ export const createRateLimiter = ({
       return next();
     }
 
+    // Preflight OPTIONS requests should never be rate-limited or delayed
+    if (req.method === 'OPTIONS') {
+      return next();
+    }
+
     let ip = '127.0.0.1';
     try {
       ip = (req.headers && req.headers['x-forwarded-for']) || 

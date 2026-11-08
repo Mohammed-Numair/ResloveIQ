@@ -3,7 +3,7 @@
  * Communicates with ResolveIQ Express backend
  */
 
-import { AUTH_API_BASE } from './apiConfig.js';
+import { AUTH_API_BASE, fetchWithTimeout } from './apiConfig.js';
 
 const NETWORK_ERROR_MSG = 'Unable to reach the ResolveIQ backend server. Please verify network connectivity and that the backend service is online.';
 
@@ -13,13 +13,13 @@ const NETWORK_ERROR_MSG = 'Unable to reach the ResolveIQ backend server. Please 
  */
 export const registerUser = async (userData) => {
   try {
-    const response = await fetch(`${AUTH_API_BASE}/register`, {
+    const response = await fetchWithTimeout(`${AUTH_API_BASE}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(userData),
-    });
+    }, 15000);
 
     let data;
     try {
@@ -34,6 +34,9 @@ export const registerUser = async (userData) => {
 
     return data;
   } catch (error) {
+    if (error.message.includes('timed out')) {
+      throw error;
+    }
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       throw new Error(NETWORK_ERROR_MSG);
     }
@@ -47,13 +50,13 @@ export const registerUser = async (userData) => {
  */
 export const loginUser = async (credentials) => {
   try {
-    const response = await fetch(`${AUTH_API_BASE}/login`, {
+    const response = await fetchWithTimeout(`${AUTH_API_BASE}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
-    });
+    }, 15000);
 
     let data;
     try {
@@ -68,6 +71,9 @@ export const loginUser = async (credentials) => {
 
     return data;
   } catch (error) {
+    if (error.message.includes('timed out')) {
+      throw error;
+    }
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       throw new Error(NETWORK_ERROR_MSG);
     }
@@ -81,13 +87,13 @@ export const loginUser = async (credentials) => {
  */
 export const getProfile = async (token) => {
   try {
-    const response = await fetch(`${AUTH_API_BASE}/me`, {
+    const response = await fetchWithTimeout(`${AUTH_API_BASE}/me`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-    });
+    }, 10000);
 
     let data;
     try {
@@ -102,6 +108,9 @@ export const getProfile = async (token) => {
 
     return data;
   } catch (error) {
+    if (error.message.includes('timed out')) {
+      throw error;
+    }
     if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
       throw new Error(NETWORK_ERROR_MSG);
     }
